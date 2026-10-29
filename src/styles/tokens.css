@@ -1,0 +1,89 @@
+/*
+ * Manifest — the console's token layer (docs/design-system.md, approved
+ * 2026-10-02). This file is authoritative; the document must match it.
+ *
+ * One ground, light only. Colour is reserved almost entirely for status.
+ * Every text pair below is gated at ≥ 4.5:1 and every control boundary /
+ * focus ring at ≥ 3:1 by src/styles/tokens.contrast.test.ts, which
+ * recomputes the ratios from this file — never trust a comment for a ratio.
+ */
+
+:root {
+  /* Ground and ink ---------------------------------------------------------- */
+  --st-canvas: #f2f4f6;
+  --st-surface: #ffffff;
+  --st-ink: #101519;
+  --st-ink-muted: #525c66;
+  /* Two lines on purpose: --st-line is decorative (table rules, 1.14:1);
+     --st-line-strong draws anything a user must perceive (inputs, selection). */
+  --st-line: #e2e6ea;
+  --st-line-strong: #7e8892;
+  --st-accent: #12507e;
+  --st-accent-hover: #0d3d61;
+  --st-accent-soft: #e7eef5;
+  --st-focus: #12507e;
+
+  /* Status vocabulary — colour + icon + label, always all three ------------- */
+  --st-status-neutral: #525c66; /* placed, cancelled, cash on delivery */
+  --st-status-confirmed: #12507e;
+  --st-status-processing: #7a4e00;
+  --st-status-ready: #5b3e9b; /* ready for pickup */
+  --st-status-transit: #0f6b75; /* shipped */
+  --st-status-done: #1f6d45; /* delivered, verified, in stock */
+  --st-status-pending: #7a4e00; /* awaiting payment, proof submitted, low stock */
+  --st-status-refunded: #5b3e9b;
+  --st-status-danger: #a32218; /* rejected, out of stock */
+  --st-status-danger-soft: #fbeeed; /* alert ground behind danger text */
+
+  /* Density — operations is touch-first, management is pointer-first -------- */
+  --st-space-1: 4px;
+  --st-space-2: 8px;
+  --st-space-3: 12px;
+  --st-space-4: 16px;
+  --st-space-5: 24px;
+  --st-space-6: 32px;
+  --st-tap-min: 44px;
+  --st-rail: 3px;
+
+  /* Motion (owner amendment: purposeful, short, never on page load) --------- */
+  --st-ease: cubic-bezier(0.2, 0, 0, 1);
+  --st-duration-fast: 120ms;
+  --st-duration: 200ms;
+
+  /* The toolkit's roles, redefined only where Manifest differs -------------- */
+  --ftk-surface: var(--st-surface);
+  --ftk-surface-muted: var(--st-canvas);
+  --ftk-surface-sunken: #e2e6ea;
+  --ftk-text-primary: var(--st-ink);
+  --ftk-text-secondary: var(--st-ink-muted);
+  --ftk-text-muted: var(--st-ink-muted);
+  --ftk-text-placeholder: #646e79; /* 4.70 on canvas, 5.19 on surface */
+  --ftk-text-on-primary: #ffffff;
+  /* The toolkit draws every control boundary with `border-strong` (inputs,
+     selects, checkboxes, outline buttons) and layout dividers with `border` —
+     so the decorative line maps to `border`, the measured one to `border-strong`. */
+  --ftk-border: var(--st-line);
+  --ftk-border-strong: var(--st-line-strong);
+  --ftk-border-subtle: var(--st-line);
+  --ftk-primary: var(--st-accent);
+  --ftk-primary-hover: var(--st-accent-hover);
+  --ftk-primary-soft: var(--st-accent-soft);
+  --ftk-link: var(--st-accent);
+  --ftk-focus: var(--st-focus);
+  --ftk-focus-subtle: #7e8892;
+  --ftk-destructive: var(--st-status-danger);
+  --ftk-destructive-hover: #861b13;
+  --ftk-destructive-text: var(--st-status-danger);
+  --ftk-destructive-border: var(--st-status-danger);
+  --ftk-destructive-soft: var(--st-status-danger-soft);
+  --ftk-success: var(--st-status-done);
+  --ftk-success-text: var(--st-status-done);
+  --ftk-warning: var(--st-status-pending);
+  --ftk-warning-text: var(--st-status-pending);
+  --ftk-overlay: rgba(16, 21, 25, 0.48);
+}
+
+[data-density="management"] {
+  --st-tap-min: 32px;
+  --ftk-control-height: 2.25rem;
+}

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: store-platform-staff-mongo
+    ports:
+      - "27020:27017"
+    environment:
+      MONGO_INITDB_DATABASE: store-platform-staff
+    volumes:
+      - store-platform-staff-mongo-data:/data/db
+    command: mongod --replSet rs0
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb-init:
+    image: mongo:7
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      mongosh --host mongodb:27017 --eval '
+        rs.initiate({
+          _id: "rs0",
+          members: [{ _id: 0, host: "mongodb:27017" }]
+        })
+      '
+
+volumes:
+  store-platform-staff-mongo-data:

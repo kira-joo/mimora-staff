@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "@kira-joo/frontend-toolkit-tailwind/theme.css";
+@import "./tokens.css";
+
+/* Tailwind scans this app's own UI; the API and server code carry no classes. */
+@source "../app";
+@source "../features";
+@source "../components";
+
+@theme inline {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  /* A functional edge, not a soft one — 2px throughout. */
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+}
+
+@layer base {
+  html {
+    background: var(--st-canvas);
+    color: var(--st-ink);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--st-focus);
+    outline-offset: 2px;
+  }
+
+  /* Codes and figures only — never Arabic content (IBM Plex Mono has no Arabic). */
+  .st-figure {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

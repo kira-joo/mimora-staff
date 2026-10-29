@@ -1,0 +1,109 @@
+/*
+ * Printable documents (invoice, packing slip, picking list): A4, no application chrome. The page is a sheet on a
+ * canvas on screen and the bare sheet on paper. Colours are the console's own tokens; on paper everything is ink on white.
+ */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+.print-canvas {
+  min-height: 100vh;
+  background: var(--st-canvas);
+  padding: var(--st-space-5) var(--st-space-4);
+}
+
+.print-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--st-space-3);
+  max-width: 210mm;
+  margin: 0 auto var(--st-space-4);
+}
+
+.print-sheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 14mm;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border: 1px solid var(--st-line);
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+
+.print-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-sheet th {
+  text-align: start;
+  font-weight: 600;
+  border-bottom: 1.5px solid var(--st-ink);
+  padding: 4pt 6pt 4pt 0;
+}
+
+.print-sheet td {
+  border-bottom: 1px solid var(--st-line);
+  padding: 5pt 6pt 5pt 0;
+  vertical-align: top;
+}
+
+.print-sheet .num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-sheet tr,
+.print-sheet section {
+  break-inside: avoid;
+}
+
+/* The order number on a packing slip: large, monospaced, widely spaced — what a barcode scanner font or a human eye reads without error. */
+.print-sheet .doc-number {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 22pt;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+.print-sheet .void-mark {
+  display: inline-block;
+  border: 2.5pt solid var(--st-status-danger);
+  color: var(--st-status-danger);
+  padding: 2pt 10pt;
+  font-size: 18pt;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  transform: rotate(-6deg);
+}
+
+@media print {
+  html,
+  body {
+    background: var(--st-surface);
+  }
+
+  .print-canvas {
+    background: none;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    max-width: none;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+  }
+}
