@@ -5,7 +5,7 @@ import { LEGAL_PAGE_SLUGS } from "./legal-pages";
  * Starting drafts for the seven legal pages — owner instruction: legal text is
  * integrated as clearly marked DRAFTS requiring owner review, never as final.
  *
- * Source: `store-platform/docs/legal-and-consent.md` §1 (titles) and §6 (the
+ * Source: `mimora-client/docs/legal-and-consent.md` §1 (titles) and §6 (the
  * openings of terms, privacy, returns and cookies — English as written there,
  * Arabic translated here because Arabic is the default locale and a page cannot
  * be published without it, D-11). Where that document gives no copy

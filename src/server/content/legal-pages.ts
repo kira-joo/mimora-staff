@@ -1,6 +1,6 @@
 /**
  * The slug of the content-managed page holding the store's terms of sale —
- * `store-platform/docs/legal-and-consent.md` §"The pages". Checkout asks a
+ * `mimora-client/docs/legal-and-consent.md` §"The pages". Checkout asks a
  * customer to accept its current version, and the order records which one
  * (D-13).
  */

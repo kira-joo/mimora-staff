@@ -138,8 +138,8 @@ export const ENV_VARS: readonly EnvVarSpec[] = [
     requirement: "required",
     secret: false,
     description:
-      "This store's stable slug (hirfa, qahwa). The database's identity marker must name it (scripts/admin/adopt-store-identity.mjs) and the storefront must carry the same value. Never change it once adopted.",
-    validate: (value) => (STORE_ID_PATTERN.test(value) ? null : `must be ${STORE_ID_RULE} (e.g. hirfa)`),
+      "This store's stable slug (mimora). The database's identity marker must name it (scripts/admin/adopt-store-identity.mjs) and the storefront must carry the same value. Never change it once adopted.",
+    validate: (value) => (STORE_ID_PATTERN.test(value) ? null : `must be ${STORE_ID_RULE} (e.g. mimora)`),
   },
   { name: "STORE_TIMEZONE", requirement: "required", secret: false, description: "The store's IANA time zone. Must equal the storefront's value.", validate: timeZoneProblem },
   {

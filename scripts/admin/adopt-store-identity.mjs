@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Adopt a database for one store — see scripts/admin/README.md before running this against production.
 //
-//   MONGODB_URI=… MONGODB_DB=… node scripts/admin/adopt-store-identity.mjs --store-id hirfa --confirm-db <MONGODB_DB> [--dry-run]
+//   MONGODB_URI=… MONGODB_DB=… node scripts/admin/adopt-store-identity.mjs --store-id mimora --confirm-db <MONGODB_DB> [--dry-run]
 //
 // Writes the database's store-identity marker once, and only if there is none. Always prints what is in the database
 // first (store name, currency, product/order/customer counts) so you can see whose data you are about to claim.

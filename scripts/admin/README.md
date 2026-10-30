@@ -11,9 +11,9 @@ backend therefore refuses to start unless the database holds a marker (`storeide
 
 ```bash
 # 1. Dry run: prints the preflight and writes nothing.
-MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs --store-id hirfa --confirm-db <db> --dry-run
+MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs --store-id mimora --confirm-db <db> --dry-run
 # 2. Check the preflight is the store you mean, then adopt.
-MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs --store-id hirfa --confirm-db <db>
+MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs --store-id mimora --confirm-db <db>
 ```
 
 Exit 0: adopted, or already adopted as the same store (nothing changed). Exit 1: `refused: <reason>`, nothing written.

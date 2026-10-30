@@ -7,7 +7,7 @@ import { createPage } from "./create-page";
 import { updatePage } from "./update-page";
 
 /**
- * D-13 (`store-platform/docs/legal-and-consent.md`): "terms pages are
+ * D-13 (`mimora-client/docs/legal-and-consent.md`): "terms pages are
  * versioned, and an edit creates a new version rather than mutating the old
  * one." An order records the version a customer accepted, so every version's
  * text must stay readable — and the page and its revision are written

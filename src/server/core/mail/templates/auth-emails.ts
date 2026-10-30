@@ -11,7 +11,7 @@ import { buildLink, durationPhrase, oneLine, renderEmailHtml, renderEmailText, t
  * Link formats are the contract with the pages that read them — the storefront's
  * `/{locale}/verify-email?token=` and `/{locale}/reset-password?token=`, and the
  * console's `/accept-invite?token=` — each reads `?token=` (verified in
- * `store-platform/src/components/auth/token-forms.tsx` and
+ * `mimora-client/src/components/auth/token-forms.tsx` and
  * `features/auth/accept-invite-form.tsx`).
  */
 

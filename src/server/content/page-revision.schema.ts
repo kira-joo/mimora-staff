@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 /**
  * PageRevision — the immutable text of one version of a `Page`.
  *
- * D-13 (`store-platform/docs/legal-and-consent.md` §"Recording acceptance"):
+ * D-13 (`mimora-client/docs/legal-and-consent.md` §"Recording acceptance"):
  * "terms pages are versioned, and an edit creates a new version rather than
  * mutating the old one." An order records only the version number it
  * accepted (`Order.termsVersionAccepted`), so the text that number refers to

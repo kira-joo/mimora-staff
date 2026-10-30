@@ -84,7 +84,7 @@ describe("the CLI's copies of application values cannot drift", () => {
   });
 
   it("the slug rule accepts short stable slugs and nothing else", () => {
-    for (const ok of ["hirfa", "qahwa", "a", "ab", "store-1", "a".repeat(40)]) {
+    for (const ok of ["mimora", "hirfa", "qahwa", "a", "ab", "store-1", "a".repeat(40)]) {
       expect(STORE_ID_PATTERN.test(ok), ok).toBe(true);
       expect(() => assertStoreId(ok)).not.toThrow();
     }

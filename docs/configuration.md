@@ -25,10 +25,10 @@ otherwise.
 | `CUSTOMER_JWT_SECRET` | yes, ≥ 32 chars | Boot (refuses). Different from the staff secret. Also keys guest order-tracking tokens: rotating it invalidates every guest tracking link. |
 | `REVALIDATE_SECRET` | capability, ≥ 32 chars when set | Cache invalidation (announced). Must equal the storefront's value; its own secret, not shared with any other. |
 | `STOREFRONT_REVALIDATE_URL` | capability (with `REVALIDATE_SECRET`) | Cache invalidation (announced). The storefront's `/api/revalidate`; https in production. |
-| `STORE_ID` | yes | Boot (refuses) in production, and every request elsewhere (the guard is on everywhere but the test runner). The store's stable slug, `hirfa`: 1-40 lowercase letters, digits and hyphens. Must equal the storefront's and the database's marker. See "Store identity" below. |
+| `STORE_ID` | yes | Boot (refuses) in production, and every request elsewhere (the guard is on everywhere but the test runner). The store's stable slug, `mimora`: 1-40 lowercase letters, digits and hyphens. Must equal the storefront's and the database's marker. See "Store identity" below. |
 | `STORE_TIMEZONE` | yes | Dates, cut-off times and promised windows. IANA name; must equal the storefront's. |
 | `STORE_PHONE_COUNTRY_CODE` | recommended | Without it national numbers (`010…`) are stored as typed, not as `+<cc>…` (announced). Digits only: `20` Egypt, `966` Saudi Arabia. **Must be the store's real country** — see `scripts/migrations/README.md` before setting it on a database that already has customers. |
-| *(check)* | — | At boot the backend compares `STORE_PHONE_COUNTRY_CODE` with the store profile's own contact number and logs `[phone] … looks wrong` on a mismatch. Fixture values: Hirfa `20`, Qahwa & Co `966` (`scripts/fixtures/README.md`). Existing customer records are never rewritten; legacy forms keep signing in. |
+| *(check)* | — | At boot the backend compares `STORE_PHONE_COUNTRY_CODE` with the store profile's own contact number and logs `[phone] … looks wrong` on a mismatch. Fixture value: `20` for the CI fixture shop, in both profiles (`scripts/fixtures/README.md`). Existing customer records are never rewritten; legacy forms keep signing in. |
 | `CLOUDINARY_CLOUD_NAME` | yes for transfer payments | See below (announced). |
 | `CLOUDINARY_API_KEY` | yes for transfer payments | See below (announced). |
 | `CLOUDINARY_API_SECRET` | yes for transfer payments | See below (announced). Server-only, never `NEXT_PUBLIC_`. |
@@ -52,7 +52,7 @@ otherwise.
 `STORE_ID` says which store this deployment serves; the database carries a marker (`storeidentity`, one document
 `_id: "store-identity"` with `storeId`, `adoptedAt`, `adoptedVia`) saying which store it holds. `connectToDatabase()` compares
 them once per process, after the index check, and refuses on any disagreement. Choose the slug once (a short, stable,
-lowercase name for the store: `hirfa`, `qahwa`) and never change it after adoption; a rename means deliberately editing the
+lowercase name for the store: `mimora`, `qahwa`) and never change it after adoption; a rename means deliberately editing the
 marker in that database and `STORE_ID` on the backend and the storefront together. The storefront carries the same
 `STORE_ID`, and reads this backend's answer from `GET /api/storefront/identity`. Adoption procedure, refusals and the
 production checklist: `deployment.md` → Store identity. The adoption command's guarantees: `scripts/admin/README.md`.
@@ -61,17 +61,17 @@ production checklist: `deployment.md` → Store identity. The adoption command's
 suites use many throwaway, unmarked databases. A test that exercises the guard sets `STORE_ID`.
 
 **Local development: a one-time adoption.** After pulling this change your dev database has no marker, so the backend
-will refuse to start against it. Add `STORE_ID=<slug>` to `.env.local` (any slug you choose for local work, e.g. `hirfa`
-for a Hirfa fixture; the storefront's `.env.local` carries the same value), then once per database:
+will refuse to start against it. Add `STORE_ID=<slug>` to `.env.local` (any slug you choose for local work, e.g. `mimora`
+for the Mimora store; the storefront's `.env.local` carries the same value), then once per database:
 
 ```bash
 MONGODB_URI='mongodb://localhost:27020/?replicaSet=rs0&directConnection=true' MONGODB_DB=store-platform-staff-dev \
-  node scripts/admin/adopt-store-identity.mjs --store-id hirfa --confirm-db store-platform-staff-dev --dry-run
+  node scripts/admin/adopt-store-identity.mjs --store-id mimora --confirm-db store-platform-staff-dev --dry-run
 # read the preflight, then run again without --dry-run
 ```
 
 A database you drop and recreate (a fixture database, a fresh `-dev`) needs adopting again before its first boot.
-Fixture databases are adopted by the storefront's `scripts/ci/configuration-proof.sh`; `scripts/fixtures/seed-store.mjs`
+Fixture databases (`store-fixture-ci-default`, `store-fixture-ci-alternate`) are adopted by the storefront's `scripts/ci/configuration-proof.sh`; `scripts/fixtures/seed-store.mjs`
 never adopts (see `scripts/fixtures/README.md`).
 
 ## Outbound email (Nodemailer over SMTP)
@@ -132,14 +132,14 @@ What is needed:
    (`PAYMENT_PROOF_UPLOAD_POLICY`). Stored under `payment-proofs/<orderNumber>/`.
 
 **End-to-end verification once the credentials exist** — scripted, so it runs
-the same way every time (`store-platform/scripts/qa/receipt-e2e.mjs`; no mock
+the same way every time (`mimora-client/scripts/qa/receipt-e2e.mjs`; no mock
 anywhere, and an unconfigured backend is reported BLOCKED, never passed):
 
 ```bash
-# 1. backend: put the three CLOUDINARY_* values in store-platform-staff/.env.local (git-ignored),
+# 1. backend: put the three CLOUDINARY_* values in mimora-staff/.env.local (git-ignored),
 #    restart it, and confirm the boot log no longer prints "[uploads] … not set"
-# 2. storefront running in front of it (a store offering WALLET/INSTAPAY to guests — Hirfa)
-cd store-platform
+# 2. storefront running in front of it (a store offering WALLET/INSTAPAY to guests — the `ci-default` fixture profile)
+cd mimora-client
 OWNER_EMAIL=… OWNER_PASSWORD=… node scripts/qa/receipt-e2e.mjs              # ~1 min
 OWNER_EMAIL=… OWNER_PASSWORD=… WAIT_FOR_EXPIRY=1 node scripts/qa/receipt-e2e.mjs   # + the 5-minute link expiry
 ```

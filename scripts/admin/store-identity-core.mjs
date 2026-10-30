@@ -48,10 +48,10 @@ export function parseArgs(argv) {
 
 /** The slug rule, separate so it is testable. */
 export function assertStoreId(storeId) {
-  if (typeof storeId !== "string" || !storeId) throw new StoreIdentityRefusal("--store-id is required (for example --store-id hirfa).");
+  if (typeof storeId !== "string" || !storeId) throw new StoreIdentityRefusal("--store-id is required (for example --store-id mimora).");
   if (!STORE_ID_PATTERN.test(storeId)) {
     throw new StoreIdentityRefusal(
-      `--store-id "${storeId}" is not a valid store id: use 1-40 lowercase letters, digits and hyphens, starting and ending with a letter or digit (for example "hirfa").`
+      `--store-id "${storeId}" is not a valid store id: use 1-40 lowercase letters, digits and hyphens, starting and ending with a letter or digit (for example "mimora").`
     );
   }
   return storeId;

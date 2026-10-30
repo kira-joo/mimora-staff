@@ -1,4 +1,4 @@
-# `store-platform-staff` — architecture
+# `mimora-staff` — architecture
 
 **This document covers this repository's internals only.**
 

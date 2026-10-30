@@ -84,7 +84,7 @@ export async function clearRateLimit(key: string): Promise<void> {
  * one our nearest proxy appended.
  *
  * Two senders reach this backend, and both are covered:
- *  - the storefront's BFF (`store-platform/src/lib/session/shop-request.ts`)
+ *  - the storefront's BFF (`mimora-client/src/lib/session/shop-request.ts`)
  *    forwards ONE address: the right-most entry of ITS own `x-forwarded-for`. With
  *    no proxy in front of this backend, that single value is the right-most
  *    entry here too;

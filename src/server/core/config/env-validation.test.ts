@@ -40,7 +40,7 @@ describe("required variables", () => {
   });
 
   it("validates the store id as a lowercase slug", () => {
-    for (const ok of ["hirfa", "qahwa", "a", "store-1", "a".repeat(40)]) expect(prod({ ...REQUIRED, STORE_ID: ok }).problems).toEqual([]);
+    for (const ok of ["mimora", "hirfa", "qahwa", "a", "store-1", "a".repeat(40)]) expect(prod({ ...REQUIRED, STORE_ID: ok }).problems).toEqual([]);
     for (const bad of ["Hirfa", "-hirfa", "hirfa-", "has space", "hir_fa", "a".repeat(41), "مطعم"]) {
       const { problems } = prod({ ...REQUIRED, STORE_ID: bad });
       expect(problems, bad).toHaveLength(1);

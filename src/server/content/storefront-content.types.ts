@@ -6,7 +6,7 @@ import type mongoose from "mongoose";
  * (navigation) and #80 (announcement bar), owner decision "Option A",
  * 2026-10-12: one record, draft then publish.
  *
- * The section vocabulary is `store-platform/docs/design-system.md` §13a
+ * The section vocabulary is `mimora-client/docs/design-system.md` §13a
  * (owner decision D-S3). The merchant chooses and orders sections; the
  * storefront owns how each one looks — so a section carries only content
  * and references, never colours, sizes or layout.

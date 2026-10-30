@@ -6,7 +6,7 @@
 > if a required one is missing or unusable. See `../../docs/deployment-deferred.md` for why deployment waited,
 > and the list at the end of this file for what is **not yet verified** because it can only be verified deployed.
 
-This repository is the single backend for the storefront (`../../store-platform`) **and** the staff console.
+This repository is the single backend for the storefront (`../../mimora-client`) **and** the staff console.
 It is one Next.js application: the console pages and every `/api/**` route are served from one origin, so the
 console needs no CORS and no cross-origin cookies. The storefront is a second, separate deployment that talks
 to this one only server-to-server.
@@ -16,7 +16,7 @@ to this one only server-to-server.
 | Piece | What | Notes |
 |---|---|---|
 | **Backend + console** | this repo, one Vercel project | `api.example.com` (a placeholder — pick the real name). Console and API share the origin. |
-| **Storefront** | `store-platform`, a second Vercel project | `shop.example.com`. See its `docs/deployment.md`. |
+| **Storefront** | `mimora-client`, a second Vercel project | `shop.example.com`. See its `docs/deployment.md`. |
 | **MongoDB** | a **replica set**, e.g. Atlas | Order placement is a transaction; a standalone node cannot run it. |
 | **Cloudinary** | one product environment **per store** | `../../docs/store/phases/07-cloudinary-isolation-plan.md`. |
 | **SMTP** | any provider, over Nodemailer | `../../docs/store/phases/07-email-provider-research.md`. |
@@ -93,8 +93,7 @@ The job runs against **Production only** (Vercel crons do not run on previews).
 ## Environment variables
 
 Declared once in `src/server/core/config/env-validation.ts`; the full explanation is `configuration.md`, and the
-reviewed, commented template is `docs/env-example.txt` (install it as `.env.example` with
-`sed '3,6d' docs/env-example.txt > .env.example` — tooling here may not write `.env*` paths). It tags every variable
+reviewed, commented template is `docs/env-example.txt` (install it with `cp docs/env-example.txt .env.example`). It tags every variable
 **[per store]**, **[per environment]**, **[pair]** (must equal the storefront's) or **[secret]**. **Secret = set it in the host's secret store, never in a tracked
 file.** Tiers: *required* stops a production boot; *capability* switches a feature on, absent is announced.
 
@@ -104,7 +103,7 @@ file.** Tiers: *required* stops a production boot; *capability* switches a featu
 | `MONGODB_DB` | required | no | A database name unique to this environment. |
 | `STAFF_JWT_SECRET` | required | **yes** | `openssl rand -base64 48`. |
 | `CUSTOMER_JWT_SECRET` | required | **yes** | A *different* `openssl rand -base64 48`. Rotating it invalidates guest tracking links. |
-| `STORE_ID` | required | no | This store's slug (`hirfa`), equal to the storefront's. See **Store identity**. |
+| `STORE_ID` | required | no | This store's slug (`mimora`), equal to the storefront's. See **Store identity**. |
 | `STORE_TIMEZONE` | required | no | IANA zone, equal to the storefront's. |
 | `STORE_PHONE_COUNTRY_CODE` | capability | no | Digits, the store's real country. |
 | `STOREFRONT_REVALIDATE_URL` | capability | no | `https://shop.example.com/api/revalidate`. |
@@ -211,7 +210,7 @@ reads the verified answer from the public route `GET /api/storefront/identity` (
 compares it with its own `STORE_ID`.
 
 **Choosing `STORE_ID`.** A short, stable, lowercase slug per store: 1-40 characters of `a-z`, `0-9` and `-`, starting
-and ending with a letter or digit (`hirfa`, `qahwa`). It names the store, not the environment: production and a
+and ending with a letter or digit (`mimora`, `qahwa`). It names the store, not the environment: production and a
 preview of the same store do not share a database, so each database is adopted once under the store's slug. **Never
 change it once adopted.** Renaming means deliberately editing the marker document by hand in that database (and
 changing `STORE_ID` on both deployments together); no script does it, on purpose.
@@ -231,12 +230,12 @@ A corrected configuration recovers without a restart of the process.
 ```bash
 # 1. dry run: prints what is in the database and writes nothing
 MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs \
-  --store-id hirfa --confirm-db <db> --dry-run
+  --store-id mimora --confirm-db <db> --dry-run
 # 2. read the preflight: database, hosts, store name (ar/en) and currency, product/order/customer counts.
 #    Is that the store you mean? If it is another store's data, STOP: you have the wrong MONGODB_DB.
 # 3. adopt (an atomic insert-if-absent; the same command twice changes nothing)
 MONGODB_URI='<uri>' MONGODB_DB=<db> node scripts/admin/adopt-store-identity.mjs \
-  --store-id hirfa --confirm-db <db>
+  --store-id mimora --confirm-db <db>
 ```
 
 `--confirm-db` must equal `MONGODB_DB` exactly, local or not. A brand-new empty database is adopted the same way,

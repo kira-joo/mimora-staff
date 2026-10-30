@@ -9,7 +9,7 @@
  * own tests (so a route rename is one edit, not a find-and-replace across
  * every test file), and any future caller inside this repo that needs to
  * reference a storefront path (there is none yet). A separate consuming
- * application (`store-platform`) hand-maintains its own equivalent, per
+ * application (`mimora-client`) hand-maintains its own equivalent, per
  * this workspace's rule that route strings carry zero shared-package
  * value and never move into a package.
  */

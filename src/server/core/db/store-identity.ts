@@ -50,11 +50,11 @@ export function configuredStoreId(env: Env): string {
   const value = env.STORE_ID?.trim();
   if (!value) {
     throw new StoreIdentityError(
-      'STORE_ID is not set. This deployment must say which store it serves — a short lowercase slug such as "hirfa" — and the storefront must be given the same value. See docs/configuration.md → Store identity.'
+      'STORE_ID is not set. This deployment must say which store it serves — a short lowercase slug such as "mimora" — and the storefront must be given the same value. See docs/configuration.md → Store identity.'
     );
   }
   if (!STORE_ID_PATTERN.test(value)) {
-    throw new StoreIdentityError(`STORE_ID "${value}" is not a valid store id: use ${STORE_ID_RULE} (for example "hirfa").`);
+    throw new StoreIdentityError(`STORE_ID "${value}" is not a valid store id: use ${STORE_ID_RULE} (for example "mimora").`);
   }
   return value;
 }

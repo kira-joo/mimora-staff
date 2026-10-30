@@ -1,4 +1,4 @@
-# `store-platform-staff` — Design system
+# `mimora-staff` — Design system
 
 > **STATUS: APPROVED by the owner, 2026-10-02 — "Manifest", with the motion
 > amendment in §6.** A design direction is a product decision; changing it
