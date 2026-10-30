@@ -1,9 +1,36 @@
-# store-platform-staff — backoffice and backend
+# mimora-staff — Mimora backoffice and backend
 
-Operational backoffice for an online store platform, **and the single backend for
-both applications**. This file is the working contract for this repository.
-Authoritative detail lives in `docs/MDS.md`; the cross-repo contract lives in
-`../docs/store/04-cross-repo-architecture.md`.
+Mimora's operational backoffice, **and the single backend for Mimora's two
+applications** (this console and the `mimora-client` storefront). This file is
+the working contract for this repository. Authoritative detail lives in
+`docs/MDS.md` (inherited from the template: where it describes a reusable
+multi-merchant platform, this file wins).
+
+## Repository model — one brand, one repository pair, one deployment
+
+- **This repository manages Mimora's own catalog, orders and settings, and
+  nothing else.** Every settings document is a per-deployment singleton and no
+  schema carries a store or tenant field; one deployment talks to one database.
+  Do not add multi-store or tenant logic.
+- **The store-identity guard is load-bearing.** `STORE_ID=mimora` must match the
+  marker in the database (`storeidentity`, written only by
+  `scripts/admin/adopt-store-identity.mjs`); `connectToDatabase` refuses any other
+  database before writing anything, and `GET /api/storefront/identity` lets the
+  storefront refuse any other backend. Never weaken, bypass or auto-write it.
+- **It was created from the reusable template** `store-platform-staff@dd0d69b`.
+  The template is a source, never a dependency: nothing here may import, read,
+  build from or check out `store-platform*`. Template improvements are ported
+  deliberately; Mimora-specific work never flows back. A future brand gets its
+  own repository pair and deployment.
+- **Local database naming is inherited, not meaningful.** The local Mimora
+  database is still called `store-platform-staff` (adopted as `mimora`), the
+  `MONGODB_DB` default and the Docker container/volume keep template names, and
+  integration tests use throwaway `*-test-*` databases. Renaming any of them is a
+  data migration that needs an explicit, owner-approved plan — never a drive-by.
+- **Fixtures:** `scripts/fixtures/stores/mimora.mjs` is local sample data for
+  Mimora's own database (seeded only with `--confirm-db`). The CI fixture shop is
+  fictional, never Mimora's catalog, and is seeded only into throwaway
+  `store-fixture-*` databases.
 
 ## What this application is
 
@@ -19,12 +46,12 @@ a smaller version of the storefront** — it must not inherit the storefront's
 visual identity.
 
 It is also the backend: every schema, repository, DTO, business rule, and API
-route for both applications lives here.
+route for both Mimora applications lives here.
 
 ## Sibling repositories
 
 This repo sits beside independent sibling repositories, including the storefront
-(`store-platform`) and a set of shared `@kira-joo/*` packages published to GitHub
+(`mimora-client`) and a set of shared `@kira-joo/*` packages published to GitHub
 Packages. No monorepo tooling, no shared lockfile, no root `package.json`.
 
 **Never work from a remembered list of packages or versions — derive them:**

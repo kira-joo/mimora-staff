@@ -1,117 +1,103 @@
-# store-platform-staff — environment (backend + staff console)
+# mimora-staff — environment (Mimora backend + staff console)
 #
-# THIS IS THE REVIEWED CONTENT FOR `.env.example`. Tooling here may not write `.env*` paths, so
-# install it with:  sed '3,6d' docs/env-example.txt > .env.example   (drops these 4 lines; commit it, delete
-# this file). It supersedes the uncommitted .env.example draft.
+# Install:  cp docs/env-example.txt .env.example      then copy .env.example to .env and fill it in.
+# Placeholders only — never put a real value in this file or in .env.example. Locally the values
+# live in .env (git-ignored); in a deployment they live in the host's secret store
+# (docs/deployment.md). Every variable is SERVER-ONLY: none is NEXT_PUBLIC_, none reaches a browser.
 #
-# Placeholders only; never commit a real value. Locally copy to .env.local (or .env); in a
-# deployment every value lives in the host's secret store (docs/deployment.md). Every variable
-# is SERVER-ONLY: none is NEXT_PUBLIC_, none ever reaches a browser.
-#
-# Declared once in src/server/core/config/env-validation.ts — a test fails when the code reads
-# a variable that table does not declare. Checked against .env.example by
-# docs/tasks/check-env-example.mjs (workspace root).
-#
-# Kind
-#   REQUIRED    a production process refuses to start without it (names, never values, are printed)
-#   CAPABILITY  switches a feature on; unset is announced loudly once at boot. Leave it EMPTY
-#               (not deleted) until you mean to configure it.
-#   OPTIONAL    has a safe default.
-# Scope
-#   [per store]       one deployment serves one store: this value differs between stores
-#   [per environment] differs between production, preview and local even for one store
-#   [pair]            must equal the matching value in that store's storefront deployment
-#   [secret]          generate it (openssl rand -base64 48); never reuse one value for two names
+# Validated at boot by src/server/core/config/env-validation.ts (the single declaration of every
+# variable; a test fails if the code reads one that table does not declare):
+#   REQUIRED    a production server refuses to start without it, naming the variable (never its value)
+#   CAPABILITY  switches a feature on. Unset = the feature is OFF, announced loudly once at startup.
+#               Leave it EMPTY (do not delete the line) until you configure it. A half-configured
+#               group (some of its variables set, some not) is reported by name.
+#   OPTIONAL    has a safe default
+# Tags
+#   [secret]          generate it (openssl rand -base64 48); never reuse one value for two variables
+#   [pair]            must equal the same-named value in mimora-client's environment
+#   [per environment] differs between local, preview and production
 
 # ── Database — REQUIRED ───────────────────────────────────────────────
-# [per store] [per environment] [secret] Must reach a REPLICA SET: order placement is one
+# [per environment] [secret in production] Must reach a MongoDB REPLICA SET: order placement is one
 # transaction. Locally `docker compose up -d` provides rs0 on port 27020. In production use a
-# managed replica set, e.g. an Atlas mongodb+srv:// string (it carries credentials).
+# managed replica set, e.g. a MongoDB Atlas mongodb+srv:// string (it carries credentials).
 MONGODB_URI=mongodb://localhost:27020/?replicaSet=rs0&directConnection=true
-# [per store] [per environment] The database name. Two environments must never share one.
-# Locally keep the -dev suffix: the fixture seeder and scripts/admin/bootstrap-owner.mjs treat
-# only *-dev, *-test and store-fixture-* databases on localhost as local.
-MONGODB_DB=store-platform-staff-dev
+# [per environment] Database name. Two environments must never share one.
+# Local Mimora data lives in `store-platform-staff` (an inherited name, adopted as STORE_ID mimora;
+# renaming it is a planned migration, not an edit here).
+MONGODB_DB=store-platform-staff
 
 # ── Authentication — REQUIRED ─────────────────────────────────────────
-# [per store] [per environment] [secret] Two audiences, two secrets: 32+ characters each,
-# different from each other and from every other secret here. Rotating one signs that
-# audience out everywhere.
-STAFF_JWT_SECRET=replace-with-at-least-32-random-characters
-CUSTOMER_JWT_SECRET=replace-with-a-different-32-plus-character-secret
-# OPTIONAL. Customer access-token lifetime: a number plus s/m/h/d. Default 15m; the refresh
-# cookie keeps customers signed in across it.
+# [secret] [per environment] Two audiences, two secrets: each at least 32 characters, different from
+# each other and from every other secret here. Rotating one signs that audience out everywhere.
+STAFF_JWT_SECRET=
+CUSTOMER_JWT_SECRET=
+# OPTIONAL. Customer access-token lifetime: a number plus s/m/h/d. Default 15m.
 CUSTOMER_ACCESS_TOKEN_TTL=
 
-# ── Store — REQUIRED ──────────────────────────────────────────────────
-# [per store] [pair: storefront STORE_ID] This store's stable slug: 1-40 lowercase letters,
-# digits and hyphens (hirfa, qahwa). The database carries a marker naming it; the backend
-# refuses to start against a database whose marker names another store, or has none. Adopt the
-# database once with scripts/admin/adopt-store-identity.mjs (docs/deployment.md → Store
-# identity). Never change it after adoption.
+# ── Store identity — REQUIRED ─────────────────────────────────────────
+# [pair: mimora-client STORE_ID] Must equal the marker in the database (written once by
+# scripts/admin/adopt-store-identity.mjs). The backend refuses any database whose marker names
+# another store, or has none. Never change it.
 STORE_ID=mimora
-# [per store] [pair: storefront STORE_TIMEZONE] The store's IANA time zone. Dispatch cutoffs,
-# operating hours, "today" and reports are computed in it. No default.
+# [pair: mimora-client STORE_TIMEZONE] IANA time zone. Cutoffs, opening hours, "today" and reports use it.
 STORE_TIMEZONE=Africa/Cairo
-# CAPABILITY [per store] Default country calling code for national phone numbers, digits only
-# (20 Egypt, 966 Saudi Arabia). Must be the store's real country. Unset: numbers are stored as
-# typed. Read scripts/migrations/README.md before setting it on a database with customers.
-STORE_PHONE_COUNTRY_CODE=
+# CAPABILITY. Country calling code for national phone numbers, digits only. Egypt is 20.
+# Unset: numbers are stored as typed. Read scripts/migrations/README.md before changing it once
+# customers exist.
+STORE_PHONE_COUNTRY_CODE=20
 
 # ── Storefront cache invalidation — CAPABILITY, both or neither ───────
-# Unset: prerendered catalog pages lag edits by up to the 300s revalidate window.
-# [per store] The storefront's full receiving URL: https://<storefront-domain>/api/revalidate
+# Unset: the storefront's prerendered catalog pages lag Staff edits by up to 300 seconds.
+# The storefront's receiving URL: https://<mimora-client domain>/api/revalidate
 STOREFRONT_REVALIDATE_URL=
-# [per store] [secret] [pair: storefront REVALIDATE_SECRET]
+# [secret] [pair: mimora-client REVALIDATE_SECRET]
 REVALIDATE_SECRET=
 
-# ── Uploads, Cloudinary — CAPABILITY, all three or none ───────────────
-# Unset: transfer-type payments (receipt upload) and every catalog/brand image upload answer
-# 503 with a clear message. Use a Cloudinary product environment dedicated to THIS store, with
-# a non-admin API key (workspace-docs: docs/store/phases/07-cloudinary-isolation-plan.md).
-# [per store] [per environment]
+# ── Image and receipt uploads, Cloudinary — CAPABILITY, all three or none ──
+# Unset: catalog/brand image uploads and payment-receipt uploads (InstaPay, wallet and bank
+# transfer orders) answer 503 with a clear message. Public images go under the `store/` folder;
+# receipts are private assets fetched only through short-lived signed URLs. Use a Cloudinary
+# product environment dedicated to Mimora.
+# Cloudinary Console → Settings (gear) → API Keys / Product environment:
+#   cloud name = "Cloud name"; API key and secret = a key row under "API Keys" (Generate New API Key).
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 # [secret]
 CLOUDINARY_API_SECRET=
 
 # ── Email, Nodemailer over SMTP — CAPABILITY ──────────────────────────
-# Delivers account emails (verify, reset, staff invite), order emails the merchant enables in
-# Settings → Notifications, and newsletter confirmations. Setting ANY of these asks for the
-# rest; a half-configured transport is announced by name. Unset: nothing is delivered, each
-# would-be message is logged by template name only, and staff use the console's reset links.
-# Usually [per store] (each store sends from its own domain).
+# Account emails (verify, reset, staff invite), the order emails enabled in Settings →
+# Notifications, and newsletter confirmations. Setting ANY of these asks for the rest. Unset:
+# nothing is sent; each would-be message is logged by template name only.
 SMTP_HOST=
-# 587 (STARTTLS, required) or 465 (implicit TLS).
+# 587 (STARTTLS) or 465 (implicit TLS).
 SMTP_PORT=
-# true only with 465; leave empty to follow the port.
+# true only with 465; empty follows the port.
 SMTP_SECURE=
-# User and password together, or neither (an unauthenticated relay).
+# User and password together, or neither (unauthenticated relay).
 SMTP_USER=
 # [secret]
 SMTP_PASS=
-# The sender, e.g. Store Name <orders@mail.shop.example.com>. Must be a domain verified with the
-# SMTP provider (SPF/DKIM), or mail is rejected or junked.
+# Sender, e.g. Mimora <orders@your-domain>. The domain must be verified with the SMTP provider (SPF/DKIM).
 MAIL_FROM=
-# OPTIONAL within this group: where customer replies go (a monitored support inbox).
+# OPTIONAL within this group: where customer replies go.
 MAIL_REPLY_TO=
-# [per store] Public origins used to build links in emails. Required once SMTP is configured.
+# Public origins used to build links in emails. Required once SMTP is configured.
+# STOREFRONT_URL = mimora-client's public origin; BACKOFFICE_URL = this console's public origin.
 STOREFRONT_URL=
 BACKOFFICE_URL=
 
 # ── Scheduled jobs — CAPABILITY ───────────────────────────────────────
-# Two jobs: the unpaid-order sweep (every 15 min; cancels proof-required orders past their
-# auto-cancel window and releases stock) and the orphan-image sweep (daily). vercel.json
-# schedules both. Both secrets unset: the job routes answer 404 to everyone and jobs are OFF.
-# [per store] [secret] On Vercel set CRON_SECRET only: Vercel Cron sends it as a Bearer token.
+# The unpaid-order sweep (every 15 min: cancels proof-required orders past their window, releases
+# stock) and the orphan-image sweep (daily). Both secrets unset: job routes answer 404; jobs are OFF.
+# [secret] On Vercel set CRON_SECRET (Vercel Cron sends it as a Bearer token).
 CRON_SECRET=
-# [per store] [secret] Any other scheduler: set JOBS_SECRET and send it as the x-jobs-secret
-# header (or Bearer).
+# [secret] Any other scheduler: JOBS_SECRET, sent as the x-jobs-secret header (or Bearer).
 JOBS_SECRET=
 
 # ── Network trust — OPTIONAL ──────────────────────────────────────────
-# How many right-most X-Forwarded-For entries belong to infrastructure you control. Default 1
-# (the host's edge). Put another proxy in front and set 2. Rate limits key on this.
+# How many right-most X-Forwarded-For entries are infrastructure you control. Default 1.
 CLIENT_IP_TRUSTED_HOPS=
-# 1 only behind a proxy that overwrites X-Real-IP; otherwise leave empty.
+# 1 only behind a proxy that overwrites X-Real-IP; otherwise empty.
 TRUST_X_REAL_IP=
