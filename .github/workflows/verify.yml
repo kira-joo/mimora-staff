@@ -40,10 +40,11 @@ jobs:
 
       - run: npm test
 
-      # Both fixtures are structurally valid, and the validator is proven able to fail. The photos live in the
-      # sibling store-platform repo, which this job does not check out: their existence is proven where it is —
-      # seeding reads every file, in store-platform's configuration proof.
-      - run: node scripts/fixtures/seed-store.mjs --check --self-test --no-image-files
+      # Every fixture is structurally valid, and the validator is proven able to fail. The CI fixture shop photos live
+      # in this repo (scripts/fixtures/images) and are checked here. The mimora `brand/...` images live in the sibling
+      # mimora-client repo, which this job does not check out: the check says so, and their existence is proven where
+      # both repos are present — seeding reads every file.
+      - run: node scripts/fixtures/seed-store.mjs --check --self-test
 
       - name: Build
         env:

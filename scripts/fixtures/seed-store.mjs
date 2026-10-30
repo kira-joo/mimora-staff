@@ -1,38 +1,49 @@
-// Idempotent fixture seeder for store-platform-staff. Admin HTTP API only, plus one direct write: the first owner.
+// Idempotent fixture seeder for mimora-staff. Admin HTTP API only, plus one direct write: the first owner.
 //
-//   node scripts/fixtures/seed-store.mjs --store store-a|store-b
+//   node scripts/fixtures/seed-store.mjs --store ci-default|ci-alternate|mimora [--confirm-db <MONGODB_DB>]
 //   node scripts/fixtures/seed-store.mjs --check [--self-test] [--no-image-files]   (no server, no database)
 //
 // Env: BACKEND_URL (default http://localhost:3040), MONGODB_URI, MONGODB_DB, OWNER_EMAIL, OWNER_PASSWORD,
-//      FIXTURE_IMAGE_DIR (optional), FIXTURE_MANIFEST_OUT (optional path for the manifest JSON).
+//      FIXTURE_IMAGE_DIR (optional, default scripts/fixtures/images, this repo's own CI fixture photos),
+//      FIXTURE_BRAND_DIR (optional, the storefront's public/ folder that holds the `brand/...` images; default
+//      ../mimora-client/public, the sibling checkout), FIXTURE_MANIFEST_OUT (optional path for the manifest JSON).
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { checkFixture, MUTATIONS } from "./check.mjs";
+import { checkFixture, resolveImageRef, MUTATIONS, NOT_APPLICABLE } from "./check.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const IMG_DIR = process.env.FIXTURE_IMAGE_DIR ?? path.resolve(HERE, "../../../store-platform/public/preview/images");
-const STORES = { "store-a": "./stores/store-a.mjs", "store-b": "./stores/store-b.mjs" };
+const IMG_DIR = process.env.FIXTURE_IMAGE_DIR ?? path.resolve(HERE, "images");
+// Seeding only READS these files (size and dimensions go into the image record); nothing is uploaded. The storefront serves
+// the same files itself from its public/ folder, which is why the stored secureUrl is root-relative.
+const BRAND_DIR = process.env.FIXTURE_BRAND_DIR ?? path.resolve(HERE, "../../../mimora-client/public");
+// key -> [module, export]. The two CI profiles are one fictional shop (stores/ci-gift-shop.mjs) in two settings profiles.
+const STORES = { "ci-default": ["./stores/ci-gift-shop.mjs", "ciDefault"], "ci-alternate": ["./stores/ci-gift-shop.mjs", "ciAlternate"], mimora: ["./stores/mimora.mjs", "default"] };
 const log = (...a) => console.log(...a);
 
 async function loadStore(key) {
   if (!Object.hasOwn(STORES, key ?? "")) throw new Error(`Unknown --store "${key}". Valid stores: ${Object.keys(STORES).join(", ")}`);
-  return (await import(STORES[key])).default;
+  const [file, name] = STORES[key];
+  return (await import(file))[name];
 }
 
 /* ------------------------------------------------------------------ --check */
 async function runCheck(selfTest, checkImages) {
   let failed = false;
-  // The photos live in the sibling store-platform repo. A job holding only this repo (store-platform-staff's own CI)
-  // cannot see them, so it says so — loudly — instead of reporting every image missing. The files are still proven:
-  // seeding reads every one, and store-platform's configuration proof seeds both stores with both repos checked out.
+  // CI fixture photos live in this repo (scripts/fixtures/images) and are always checked. The mimora `brand/...` images
+  // live in the sibling mimora-client checkout; a job holding only this repo (mimora-staff's own CI) cannot see them, so it
+  // says so — loudly — instead of reporting every image missing. They are still proven where both repos are present:
+  // seeding reads every one.
   const imageDir = checkImages ? IMG_DIR : undefined;
-  if (!checkImages) log("check: image files NOT checked (--no-image-files) — seeding verifies them where store-platform is present");
+  const brandAvailable = checkImages && fs.existsSync(path.join(BRAND_DIR, "brand"));
+  const brandDir = brandAvailable ? BRAND_DIR : undefined;
+  if (!checkImages) log("check: image files NOT checked (--no-image-files)");
+  else if (!brandAvailable) log(`check: brand/... image files NOT checked — no ${path.join(BRAND_DIR, "brand")} (set FIXTURE_BRAND_DIR or check out mimora-client beside this repo); seeding verifies them`);
   for (const key of Object.keys(STORES)) {
     const f = await loadStore(key);
-    const v = checkFixture(f, { imageDir });
+    const v = checkFixture(f, { imageDir, brandDir });
     log(`check ${key}: ${v.length === 0 ? "OK" : `${v.length} violation(s)`}`);
     v.forEach((x) => log(`  - ${x}`));
     if (v.length) failed = true;
@@ -42,15 +53,15 @@ async function runCheck(selfTest, checkImages) {
     for (const key of Object.keys(STORES)) {
       const original = await loadStore(key);
       for (const [name, mutate, needs] of MUTATIONS) {
-        if (needs === "imageFiles" && !checkImages) { log(`self-test ${key} :: ${name}: skipped (needs image files)`); continue; }
+        if ((needs === "imageFiles" && !imageDir) || (needs === "brandFiles" && !brandDir)) { log(`self-test ${key} :: ${name}: skipped (needs ${needs === "brandFiles" ? "brand image files" : "image files"})`); continue; }
         const copy = structuredClone(original);
-        mutate(copy);
-        const v = checkFixture(copy, { imageDir });
+        if (mutate(copy) === NOT_APPLICABLE) { log(`self-test ${key} :: ${name}: skipped (fixture has nothing of that shape)`); continue; }
+        const v = checkFixture(copy, { imageDir, brandDir });
         const caught = v.length > 0;
         log(`self-test ${key} :: ${name}: ${caught ? `caught (${v[0]})` : "NOT CAUGHT"}`);
         if (!caught) failed = true;
       }
-      if (checkFixture(original, { imageDir }).length) failed = true; // mutations must not have leaked into the original
+      if (checkFixture(original, { imageDir, brandDir }).length) failed = true; // mutations must not have leaked into the original
     }
     log(`self-test ${failed ? "FAILED" : "passed"}: every mutation was reported`);
   }
@@ -68,7 +79,12 @@ function hostAllowed(host) {
   // Service names (single label, e.g. `mongodb`, `backend`) are reachable only inside a CI network.
   return process.env.CI === "true" && /^[a-z0-9_-]+$/.test(host);
 }
-function guard(env) {
+/**
+ * `confirmDb` (`--confirm-db <name>`) is the one explicit opt-in for a database whose name does not carry the -dev / -test /
+ * store-fixture- marker (a local database an owner wants filled with sample content). It must equal MONGODB_DB exactly, so it
+ * cannot be set once and forgotten; every other guard, including the localhost-only hosts, still applies.
+ */
+function guard(env, confirmDb) {
   const problems = [];
   let backendHost = "";
   try { backendHost = new URL(env.BACKEND_URL).hostname.replace(/^\[|\]$/g, ""); } catch { problems.push("BACKEND_URL is not a valid URL"); }
@@ -78,7 +94,8 @@ function guard(env) {
   } catch (e) { problems.push(e.message); }
   const db = env.MONGODB_DB ?? "";
   if (!db) problems.push("MONGODB_DB is required");
-  else if (!(db.endsWith("-dev") || db.endsWith("-test") || db.startsWith("store-fixture-"))) problems.push(`MONGODB_DB "${db}" must end in -dev or -test, or start with store-fixture-`);
+  else if (confirmDb !== undefined && confirmDb !== db) problems.push(`--confirm-db "${confirmDb}" must equal MONGODB_DB "${db}" exactly`);
+  else if (!(db.endsWith("-dev") || db.endsWith("-test") || db.startsWith("store-fixture-") || confirmDb === db)) problems.push(`MONGODB_DB "${db}" must end in -dev or -test, or start with store-fixture- (or be named explicitly with --confirm-db ${db})`);
   if (!env.OWNER_EMAIL) problems.push("OWNER_EMAIL is required");
   if (!env.OWNER_PASSWORD) problems.push("OWNER_PASSWORD is required");
   else if (env.OWNER_PASSWORD.length < 10) problems.push("OWNER_PASSWORD must be at least 10 characters (the accept-invite DTO enforces it)");
@@ -179,6 +196,10 @@ async function ensureOwner(env, http) {
 }
 
 /* ------------------------------------------------------------------ images */
+function pngSize(buf) {
+  if (buf.toString("latin1", 1, 4) !== "PNG") throw new Error("not a PNG");
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
 function jpegSize(buf) {
   let i = 2;
   while (i < buf.length) {
@@ -190,10 +211,11 @@ function jpegSize(buf) {
   throw new Error("no SOF marker");
 }
 /** The storefront serves its /public folder itself, so a root-relative secureUrl is enough; no upload service is involved. */
-function img(file) {
-  const buf = fs.readFileSync(path.join(IMG_DIR, `${file}.jpg`));
-  const { width, height } = jpegSize(buf);
-  return { provider: "cloudinary", publicId: `preview/images/${file}`, secureUrl: `/preview/images/${file}.jpg`, format: "jpg", width, height, bytes: buf.length };
+function img(ref) {
+  const r = resolveImageRef(ref, { imageDir: IMG_DIR, brandDir: BRAND_DIR });
+  const buf = fs.readFileSync(r.file);
+  const { width, height } = r.ext === "png" ? pngSize(buf) : jpegSize(buf);
+  return { provider: "cloudinary", publicId: r.publicId, secureUrl: r.secureUrl, format: r.format, width, height, bytes: buf.length };
 }
 
 /* ------------------------------------------------------------------ seeding */
@@ -218,13 +240,14 @@ async function seed(f, http) {
   const image = (name) => (name ? img(name) : undefined);
 
   log("[store profile]");
-  await http.admin("PUT", "/store-profile", { ...f.store, heroMedia: image(f.store.heroMedia), ogImage: image(f.store.ogImage), defaultSeo: f.store.defaultSeo });
+  await http.admin("PUT", "/store-profile", { ...f.store, logo: image(f.store.logo), heroMedia: image(f.store.heroMedia), ogImage: image(f.store.ogImage), defaultSeo: f.store.defaultSeo });
   log("[theme]");
   await http.admin("PUT", "/store-profile/theme", f.theme);
   log("[fulfilment settings]");
   await http.admin("PUT", "/fulfilment-settings", f.fulfilment);
   log("[operating hours]");
-  await http.admin("PUT", "/operating-hours", f.hours);
+  if (f.hours) await http.admin("PUT", "/operating-hours", f.hours);
+  else log("  none for this store");
   log("[payment settings]");
   await http.admin("PUT", "/payment-settings", f.payments);
 
@@ -381,8 +404,10 @@ async function main() {
     MONGODB_URI: process.env.MONGODB_URI ?? "mongodb://localhost:27020/?replicaSet=rs0&directConnection=true",
     MONGODB_DB: process.env.MONGODB_DB, OWNER_EMAIL: process.env.OWNER_EMAIL, OWNER_PASSWORD: process.env.OWNER_PASSWORD,
   };
-  guard(env);
-  const problems = checkFixture(f, { imageDir: IMG_DIR });
+  const ci = argv.indexOf("--confirm-db");
+  if (ci >= 0 && !argv[ci + 1]) throw new Error("--confirm-db needs the database name");
+  guard(env, ci >= 0 ? argv[ci + 1] : undefined);
+  const problems = checkFixture(f, { imageDir: IMG_DIR, brandDir: BRAND_DIR });
   if (problems.length) throw new Error(`Fixture ${f.key} failed its structural check:\n  - ${problems.join("\n  - ")}`);
 
   log(`seeding ${f.key} -> db "${env.MONGODB_DB}" via ${new URL(env.BACKEND_URL).host}`);

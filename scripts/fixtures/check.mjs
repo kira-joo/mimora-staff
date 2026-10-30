@@ -26,7 +26,26 @@ function dupes(label, values, out) {
   }
 }
 
-export function checkFixture(f, { imageDir } = {}) {
+/**
+ * An image reference is either a bare name (a `.jpg` in this repo's own `scripts/fixtures/images`, the original form) or, when
+ * it contains a "/", a path under the storefront's `public/` folder (`brandDir`, the sibling mimora-client checkout) that
+ * carries its own real extension (`brand/mimora/categories/Gift-Boxes.jpeg`). One resolver for both the check and the seeder.
+ */
+const SUPPORTED_IMAGE_EXTS = new Set(["jpg", "jpeg", "png"]);
+
+export function resolveImageRef(ref, { imageDir, brandDir }) {
+  if (ref.includes("/")) {
+    const ext = path.extname(ref).slice(1).toLowerCase();
+    return { file: path.join(brandDir, ref), publicId: ref.replace(/\.[^.\/]+$/, ""), secureUrl: `/${ref}`, ext, format: ext === "jpeg" ? "jpg" : ext };
+  }
+  return { file: path.join(imageDir, `${ref}.jpg`), publicId: `preview/images/${ref}`, secureUrl: `/preview/images/${ref}.jpg`, ext: "jpg", format: "jpg" };
+}
+
+/**
+ * `imageDir` enables the existence check for bare-name references, `brandDir` for path references; either may be omitted
+ * (a job without that directory), in which case those references are not checked.
+ */
+export function checkFixture(f, { imageDir, brandDir } = {}) {
   const out = [];
   const where = f.key ?? "fixture";
   walkLocalized(f, where, out);
@@ -96,33 +115,49 @@ export function checkFixture(f, { imageDir } = {}) {
     if (s.type === "productRail" && (s.source === "collection") !== Boolean(s.collection)) out.push("productRail: collection must be set exactly when source is collection");
   }
 
-  if (imageDir) {
-    const files = new Set();
-    const collect = (v) => { if (typeof v === "string") files.add(v); };
-    [f.store.heroMedia, f.store.ogImage].forEach(collect);
-    f.categories.forEach((x) => x.image && collect(x.image));
-    f.collections.forEach((x) => x.image && collect(x.image));
-    f.products.forEach((p) => { p.images.forEach(collect); p.variants.forEach((v) => (v.galleryOverride ?? []).forEach(collect)); });
-    for (const name of files) if (!fs.existsSync(path.join(imageDir, `${name}.jpg`))) out.push(`image file missing: ${name}.jpg`);
+  const files = new Set();
+  const collect = (v) => { if (typeof v === "string") files.add(v); };
+  [f.store.logo, f.store.heroMedia, f.store.ogImage].forEach(collect);
+  f.categories.forEach((x) => x.image && collect(x.image));
+  f.collections.forEach((x) => x.image && collect(x.image));
+  f.products.forEach((p) => { p.images.forEach(collect); p.variants.forEach((v) => (v.galleryOverride ?? []).forEach(collect)); });
+  // The seeder reads dimensions for JPEG and PNG only; any other extension is refused here, with or without the files.
+  for (const name of files) {
+    if (name.includes("/") && !SUPPORTED_IMAGE_EXTS.has(path.extname(name).slice(1).toLowerCase())) out.push(`unsupported image type (jpg, jpeg or png only): ${name}`);
+  }
+
+  if (imageDir || brandDir) {
+    for (const name of files) {
+      if (name.includes("/") ? !brandDir : !imageDir) continue;
+      const { file } = resolveImageRef(name, { imageDir, brandDir });
+      if (!fs.existsSync(file)) out.push(`image file missing: ${name.includes("/") ? name : `${name}.jpg`}`);
+    }
   }
   return out;
 }
 
+/** A mutation returns this when the fixture has nothing of the shape it breaks (e.g. no pages). The self-test says so per fixture. */
+export const NOT_APPLICABLE = Symbol("not applicable");
+
 /**
  * Each mutation must make `checkFixture` report something; otherwise the check cannot catch that class of fault.
- * A third element names what the mutation needs to be detectable (`imageFiles`: an image directory).
+ * A third element names what the mutation needs to be detectable (`imageFiles`: the fixture image directory; `brandFiles`: the
+ * storefront `public/` directory that holds `brand/...` images).
  */
 export const MUTATIONS = [
   ["variant removed from a product", (f) => { f.products[0].variants = []; }],
-  ["variant option key that is not an axis", (f) => { const v = f.products.find((p) => p.axes.length).variants[0]; v.optionValues[0].key = "bogus"; }],
-  ["variant option value not on the axis", (f) => { const v = f.products.find((p) => p.axes.length).variants[0]; v.optionValues[0].value = "no-such-value"; }],
-  ["axis-less product given an option value", (f) => { f.products.find((p) => !p.axes.length).variants[0].optionValues = [{ key: "size", value: "M" }]; }],
+  ["variant option key that is not an axis", (f) => { const p = f.products.find((x) => x.axes.length); if (!p) return NOT_APPLICABLE; p.variants[0].optionValues[0].key = "bogus"; }],
+  ["variant option value not on the axis", (f) => { const p = f.products.find((x) => x.axes.length); if (!p) return NOT_APPLICABLE; p.variants[0].optionValues[0].value = "no-such-value"; }],
+  ["axis-less product given an option value", (f) => { const p = f.products.find((x) => !x.axes.length); if (!p) return NOT_APPLICABLE; p.variants[0].optionValues = [{ key: "size", value: "M" }]; }],
   ["duplicate product slug", (f) => { f.products[1].slug = f.products[0].slug; }],
   ["duplicate SKU", (f) => { f.products[1].variants[0].sku = f.products[0].variants[0].sku; }],
   ["missing Arabic on a product name", (f) => { delete f.products[0].name.ar; }],
-  ["blank English on a page title", (f) => { f.pages[0].title.en = " "; }],
+  ["blank English on a page title", (f) => { if (!f.pages.length) return NOT_APPLICABLE; f.pages[0].title.en = " "; }],
   ["missing locale inside a payment instruction", (f) => { f.payments.methods.at(-1).instructions = { en: "only english" }; }],
-  ["navigation to a page that does not exist", (f) => { f.content.footerNavigation[0].target.slug = "nope"; }],
+  ["navigation to a page that does not exist", (f) => { if (!f.content.footerNavigation.length) return NOT_APPLICABLE; f.content.footerNavigation[0].target.slug = "nope"; }],
+  ["header navigation to a category that does not exist", (f) => { f.content.headerNavigation[0].target.slug = "nope"; }],
   ["product in an unknown category", (f) => { f.products[0].category = "nope"; }],
   ["image file that does not exist", (f) => { f.products.find((p) => p.images.length).images[0] = "no-such-image"; }, "imageFiles"],
+  ["public-path image with an unsupported type", (f) => { f.products.find((p) => p.images.length).images[0] = "brand/none/photo.webp"; }],
+  ["public-path image (with its own extension) that does not exist", (f) => { f.products.find((p) => p.images.length).images[0] = "brand/none/missing.jpeg"; }, "brandFiles"],
 ];
