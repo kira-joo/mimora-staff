@@ -1,11 +1,11 @@
 import { NotFoundError } from "@kira-joo/backend-toolkit-core";
 import { storeProfileRepository } from "../core/repositories";
 import { resolveBrandPalette, type BrandPalette } from "../engines/theme/derive-theme";
-import { STOREFRONT_GROUNDS, STOREFRONT_SURFACES, TYPOGRAPHY_CHOICES, type TypographyChoice } from "../content/storefront-grounds";
+import { STOREFRONT_GROUNDS, STOREFRONT_SURFACES } from "../content/storefront-grounds";
 import type { StoreProfileSchema } from "../content/store-profile.schema";
 
 export interface ThemeView {
-  brand: StoreProfileSchema["brand"] & { typographyChoice: TypographyChoice };
+  brand: StoreProfileSchema["brand"];
   theme: StoreProfileSchema["theme"];
   /** The colours to paint, per ground — the storefront never derives them itself (business logic stays here). */
   palette: BrandPalette;
@@ -25,8 +25,10 @@ export async function getTheme(): Promise<ThemeView> {
   const profile = await storeProfileRepository.findOne({ where: {}, select: { brand: true, theme: true }, skipThrowError: true, lean: true });
   if (!profile) throw new NotFoundError("Store profile is not configured.");
 
-  const typographyChoice = (TYPOGRAPHY_CHOICES as readonly string[]).includes(profile.brand.typographyChoice) ? (profile.brand.typographyChoice as TypographyChoice) : "default";
   const palette = resolveBrandPalette({ fills: { primary: profile.brand.primary, accent: profile.brand.accent }, overrides: profile.theme.tokenOverrides ?? [], grounds: STOREFRONT_GROUNDS, surfaces: STOREFRONT_SURFACES });
 
-  return { brand: { ...profile.brand, typographyChoice }, theme: profile.theme, palette, grounds: STOREFRONT_GROUNDS };
+  // Named keys, not a spread: a profile saved before `typographyChoice` was removed still stores it, and the
+  // storefront must never receive a typography setting again (Mimora's fonts are fixed in its code).
+  const { primary, accent, surface, text, radiusScale } = profile.brand;
+  return { brand: { primary, accent, surface, text, radiusScale }, theme: profile.theme, palette, grounds: STOREFRONT_GROUNDS };
 }

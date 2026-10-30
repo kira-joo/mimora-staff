@@ -25,7 +25,7 @@ afterAll(async () => {
 
 function dto(overrides: Partial<UpdateThemeDto> = {}): UpdateThemeDto {
   return {
-    brand: { primary: "#6B8F71", accent: "#B03060", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" },
+    brand: { primary: "#6B8F71", accent: "#B03060", surface: "#FFFFFF", text: "#111111", radiusScale: 1 },
     theme: { defaultGround: "light", darkEnabled: false, allowVisitorChoice: false, tokenOverrides: [] },
     ...overrides,
   } as UpdateThemeDto;
@@ -46,7 +46,7 @@ describe("updateTheme", () => {
   it("reports the measured light-ground contrast ratio for a fill that already clears the bar", async () => {
     // #111111 on white clears WCAG AA comfortably — the derived ink should equal the seed itself.
     const { contrastReport } = await updateTheme(
-      dto({ brand: { primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" } })
+      dto({ brand: { primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1 } })
     );
 
     const primary = contrastReport.lightGround.find((m) => m.label === "brand.primary");
@@ -57,7 +57,7 @@ describe("updateTheme", () => {
 
   it("MDS §20's own documented failure — #6B8F71 on white (3.63:1) — derives a compliant ink instead of storing the failing raw value as the measurement", async () => {
     const { contrastReport } = await updateTheme(
-      dto({ brand: { primary: "#6B8F71", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" } })
+      dto({ brand: { primary: "#6B8F71", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1 } })
     );
 
     const primary = contrastReport.lightGround.find((m) => m.label === "brand.primary");
@@ -87,7 +87,7 @@ describe("updateTheme", () => {
 
   it("measures against the design system's grounds, never the merchant's free-text surface", async () => {
     const onWhite = await updateTheme(dto());
-    const onBlack = await updateTheme(dto({ brand: { primary: "#6B8F71", accent: "#B03060", surface: "#000000", text: "#FFFFFF", radiusScale: 1, typographyChoice: "default" } }));
+    const onBlack = await updateTheme(dto({ brand: { primary: "#6B8F71", accent: "#B03060", surface: "#000000", text: "#FFFFFF", radiusScale: 1 } }));
 
     expect(onWhite.contrastReport.lightGround.map((m) => m.groundHex)).toEqual([STOREFRONT_GROUNDS.light, STOREFRONT_GROUNDS.light]);
     expect(onBlack.contrastReport).toEqual(onWhite.contrastReport);
@@ -111,7 +111,7 @@ describe("updateTheme", () => {
 
   it("rejects a malformed hex loudly rather than silently deriving from it", async () => {
     await expect(
-      updateTheme(dto({ brand: { primary: "not-a-color", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" } }))
+      updateTheme(dto({ brand: { primary: "not-a-color", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1 } }))
     ).rejects.toThrow();
   });
 });

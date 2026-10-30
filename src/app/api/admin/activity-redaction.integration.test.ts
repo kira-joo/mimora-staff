@@ -54,7 +54,7 @@ describe("the audit log records non-secret fields as sent", () => {
 
   it("the theme keeps its tokenOverrides — public brand colours, served by GET /api/storefront/theme", async () => {
     const body = {
-      brand: { primary: "#6B8F71", accent: "#C0392B", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" },
+      brand: { primary: "#6B8F71", accent: "#C0392B", surface: "#FFFFFF", text: "#111111", radiusScale: 1 },
       theme: { defaultGround: "light", darkEnabled: false, allowVisitorChoice: false, tokenOverrides: [{ key: "accent", value: "#AA3322" }] },
     };
     const response = await admin.call(putTheme, "/api/admin/store-profile/theme", { method: "PUT", body });

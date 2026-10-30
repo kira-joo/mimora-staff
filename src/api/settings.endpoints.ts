@@ -29,7 +29,6 @@ export interface StoreBrand {
   surface: string;
   text: string;
   radiusScale: number;
-  typographyChoice: string;
 }
 
 export interface TokenOverride {

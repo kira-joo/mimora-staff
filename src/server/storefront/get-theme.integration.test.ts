@@ -35,13 +35,13 @@ describe("getTheme", () => {
       description: { en: "x", ar: "x" },
       contact: { phone: "+201000000000", email: "s@example.com" },
       currency: "EGP",
-      brand: { primary: "#6B8F71", accent: "#654321", surface: "#FFFFFF", text: "#000000", radiusScale: 2, typographyChoice: "contemporary" },
+      brand: { primary: "#6B8F71", accent: "#654321", surface: "#FFFFFF", text: "#000000", radiusScale: 2 },
       theme: { defaultGround: "light", darkEnabled: true, allowVisitorChoice: true, tokenOverrides: [{ key: "primary", value: "#ABCDEF" }] },
     });
 
     const theme = await getTheme();
     expect(theme.brand.primary).toBe("#6B8F71");
-    expect(theme.brand.typographyChoice).toBe("contemporary");
+    expect(Object.keys(theme.brand).sort()).toEqual(["accent", "primary", "radiusScale", "surface", "text"]);
     expect(theme.theme.darkEnabled).toBe(true);
     expect(theme.theme.tokenOverrides).toEqual([{ key: "primary", value: "#ABCDEF" }]);
     expect(theme.grounds).toEqual(STOREFRONT_GROUNDS);
@@ -55,16 +55,19 @@ describe("getTheme", () => {
     }
   });
 
-  it("reads a typography value outside the curated set as the default pairing (D-S4)", async () => {
-    await StoreProfileModel.create({
+  it("never forwards a typography setting stored before it was removed — Mimora's fonts are fixed in the storefront", async () => {
+    // Written past the schema (which no longer declares the key), exactly as a profile saved by the template looks.
+    await StoreProfileModel.collection.insertOne({
       name: { en: "T", ar: "ت" },
       tagline: { en: "x", ar: "x" },
       description: { en: "x", ar: "x" },
       contact: { phone: "+201000000000", email: "s@example.com" },
       currency: "EGP",
-      brand: { primary: "#123456", accent: "#654321", surface: "#FFFFFF", text: "#000000", radiusScale: 1, typographyChoice: "rounded" },
+      brand: { primary: "#123456", accent: "#654321", surface: "#FFFFFF", text: "#000000", radiusScale: 1, typographyChoice: "contemporary" },
       theme: { defaultGround: "light", darkEnabled: false, allowVisitorChoice: false, tokenOverrides: [] },
     });
-    expect((await getTheme()).brand.typographyChoice).toBe("default");
+    const { brand } = await getTheme();
+    expect(brand).not.toHaveProperty("typographyChoice");
+    expect(brand.primary).toBe("#123456");
   });
 });

@@ -1,4 +1,4 @@
-# `store-platform-staff` — Backoffice MDS
+# `mimora-staff` — Backoffice MDS
 
 The master specification for the backoffice **and the single backend for both
 applications**. The workspace `CLAUDE.md` outranks this document;
@@ -260,7 +260,7 @@ asset folder paths. See §22.
 
 | Entity | Key fields |
 |---|---|
-| **StoreProfile** | `name`/`tagline`/`description` (Localized), `logo`/`favicon`/`ogImage`/`heroMedia`, `brand` {primary, accent, surface, text, radiusScale, typographyChoice}, **`theme`** {`defaultGround`, `darkEnabled`, `allowVisitorChoice`, `tokenOverrides[]`}, `contact`, `socialLinks[]`, `currency`, `defaultLocale`, `supportedLocales[]`, `defaultSeo` |
+| **StoreProfile** | `name`/`tagline`/`description` (Localized), `logo`/`favicon`/`ogImage`/`heroMedia`, `brand` {primary, accent, surface, text, radiusScale} (no typography setting: Mimora's fonts are fixed in mimora-client), **`theme`** {`defaultGround`, `darkEnabled`, `allowVisitorChoice`, `tokenOverrides[]`}, `contact`, `socialLinks[]`, `currency`, `defaultLocale`, `supportedLocales[]`, `defaultSeo` |
 | **FulfilmentSettings** | `deliveryEnabled`, `pickupEnabled`, `defaultDispatchLeadDays`, `cutoffTime`, `maxDaysAhead`, `orderMinimum` (Money), `shippingFeeMode`, `tax` {mode: INCLUDED\|ADDED, rate}, `allowGuestCheckout`, `customerCancelUntil`, `returnWindowDays` |
 | **PaymentSettings** | `methods[]` — each {method, enabled, order, instructions (Localized), destination {accountName, number, handle}, requiresProof, autoCancelMinutes, verificationWindowMinutes}. **The destination is configuration and is never hardcoded.** |
 | **InventorySettings** | `lowStockThreshold`, `defaultInventoryPolicy` (DENY \| CONTINUE_SELLING), `allowNegativeStock: false` — **not configurable to true** |
@@ -948,9 +948,10 @@ aspirational.**
   broken.
 - **API contract:** every storefront- and shop-facing response shape asserted,
   so a backend change that would break the storefront fails here.
-- **The second-store fixture**, differing in currency, zones, payment methods,
-  enabled capabilities **and theme configuration**, exercised in CI. A derived
-  dark palette tested against one brand's colours has not been tested.
+- **The CI fixture shop in two settings profiles** (`ci-default`, `ci-alternate`),
+  differing in payment methods, guest checkout, pickup, minimum order, fee and tax
+  modes, zones, **theme configuration** and default ground, exercised in CI. A
+  derived dark palette tested against one brand's colours has not been tested.
 
 **And confirm the guards can fail.** *A test that cannot fail proves nothing.*
 Break each one deliberately — the token guard, both contrast gates, both coverage

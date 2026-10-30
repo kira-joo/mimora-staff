@@ -1,6 +1,5 @@
 import { Transform, Type } from "class-transformer";
 import { expandHexShorthand } from "../../engines/theme/color-math";
-import { TYPOGRAPHY_CHOICES, type TypographyChoice } from "../../content/storefront-grounds";
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsNumber, IsOptional, Matches, Max, Min, ValidateNested } from "class-validator";
 
 /**
@@ -36,10 +35,6 @@ class BrandDto {
   @Min(0.5)
   @Max(2)
   radiusScale!: number;
-
-  /** D-S4: one of the curated, Arabic-covering pairings (`TYPOGRAPHY_CHOICES`). */
-  @IsIn(TYPOGRAPHY_CHOICES, { message: `typographyChoice must be one of: ${TYPOGRAPHY_CHOICES.join(", ")}` })
-  typographyChoice!: TypographyChoice;
 }
 
 class TokenOverrideDto {

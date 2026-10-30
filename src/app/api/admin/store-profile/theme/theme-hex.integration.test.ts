@@ -25,7 +25,7 @@ let admin: AdminCaller;
 
 function body(brand: Partial<Record<"primary" | "accent" | "surface" | "text", string>> = {}, overrides: Array<{ key: "primary" | "accent"; value: string }> = []) {
   return {
-    brand: { primary: "#6B8F71", accent: "#C0392B", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default", ...brand },
+    brand: { primary: "#6B8F71", accent: "#C0392B", surface: "#FFFFFF", text: "#111111", radiusScale: 1, ...brand },
     theme: { defaultGround: "light", darkEnabled: false, allowVisitorChoice: false, tokenOverrides: overrides },
   };
 }
@@ -77,5 +77,13 @@ describe("theme colours", () => {
 
   it("refuses a malformed override value too", async () => {
     expect((await save(body({}, [{ key: "accent", value: "#ab" }]))).status).toBe(400);
+  });
+});
+
+describe("typography is not a setting", () => {
+  it("a theme write carrying the removed typographyChoice never stores it — Mimora's fonts are fixed in the storefront", async () => {
+    const { status } = await save({ ...body(), brand: { ...body().brand, typographyChoice: "contemporary" } });
+    expect([200, 400]).toContain(status);
+    expect((await stored())?.brand ?? {}).not.toHaveProperty("typographyChoice");
   });
 });

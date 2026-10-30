@@ -93,11 +93,11 @@ export function toStoreProfileBody(values: StoreProfileFormValues): StoreProfile
 // --- Theme -----------------------------------------------------------------------------------------------------------
 
 /** Matches the schema defaults, shown until the first save. */
-export const DEFAULT_BRAND: StoreBrand = { primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" };
+export const DEFAULT_BRAND: StoreBrand = { primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1 };
 export const DEFAULT_THEME: StoreTheme = { defaultGround: "light", darkEnabled: false, allowVisitorChoice: false, tokenOverrides: [] };
 
 export interface ThemeFormValues {
-  brand: { primary: string; accent: string; surface: string; text: string; radiusScale: string; typographyChoice: string };
+  brand: { primary: string; accent: string; surface: string; text: string; radiusScale: string };
   theme: StoreTheme;
 }
 
@@ -105,7 +105,7 @@ export function themeToForm(profile: Pick<StoreProfile, "brand" | "theme">): The
   const brand = profile.brand ?? DEFAULT_BRAND;
   const theme = profile.theme ?? DEFAULT_THEME;
   return {
-    brand: { ...brand, radiusScale: String(brand.radiusScale) },
+    brand: { primary: brand.primary, accent: brand.accent, surface: brand.surface, text: brand.text, radiusScale: String(brand.radiusScale) },
     theme: { ...theme, tokenOverrides: (theme.tokenOverrides ?? []).map((o) => ({ key: o.key, value: o.value })) },
   };
 }
@@ -119,7 +119,6 @@ export function toThemeBody(values: ThemeFormValues): ThemeInput {
       surface: brand.surface.trim(),
       text: brand.text.trim(),
       radiusScale: Number(brand.radiusScale),
-      typographyChoice: brand.typographyChoice.trim(),
     },
     theme: { ...theme, tokenOverrides: theme.tokenOverrides.map((o) => ({ key: o.key, value: o.value.trim() })) },
   };

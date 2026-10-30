@@ -59,9 +59,9 @@ export class StoreProfileSchema {
    * (`resolveBrandPalette`, against `STOREFRONT_GROUNDS`). `surface`/`text`
    * are stored but **not applied**: D-2 makes text and ground-dependent
    * surfaces non-overridable, and the storefront's grounds are the design
-   * system's own (design-system.md §7a). `typographyChoice` is one of
-   * `TYPOGRAPHY_CHOICES` on every write; an older free-text value reads as
-   * `"default"`.
+   * system's own (design-system.md §7a). Typography is not data: Mimora's
+   * fonts are fixed in the storefront's code (the template's
+   * `typographyChoice` was removed; a value stored before then is ignored).
    */
   @MongoField({
     type: new mongoose.Schema(
@@ -71,11 +71,10 @@ export class StoreProfileSchema {
         surface: { type: String, required: true },
         text: { type: String, required: true },
         radiusScale: { type: Number, required: true, default: 1 },
-        typographyChoice: { type: String, required: true, default: "default" },
       },
       { _id: false }
     ),
-    default: () => ({ primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1, typographyChoice: "default" }),
+    default: () => ({ primary: "#111111", accent: "#111111", surface: "#FFFFFF", text: "#111111", radiusScale: 1 }),
   })
   brand!: {
     primary: string;
@@ -83,7 +82,6 @@ export class StoreProfileSchema {
     surface: string;
     text: string;
     radiusScale: number;
-    typographyChoice: string;
   };
 
   /**

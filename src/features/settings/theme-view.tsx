@@ -52,13 +52,6 @@ function colourField(name: "brand.primary" | "brand.accent" | "brand.surface" | 
   };
 }
 
-/** D-S4 — the curated pairings, matching the backend's `TYPOGRAPHY_CHOICES`. */
-const TYPOGRAPHY_OPTIONS = [
-  { value: "default", label: "Editorial — Noto Naskh Arabic headings, Noto Sans Arabic text" },
-  { value: "contemporary", label: "Contemporary — Noto Kufi Arabic headings, Noto Sans Arabic text" },
-  { value: "neutral", label: "Neutral — IBM Plex Sans Arabic throughout" },
-];
-
 const OVERRIDE_KEYS = [
   { value: "primary", label: "Primary fill" },
   { value: "accent", label: "Accent fill" },
@@ -109,14 +102,6 @@ function buildSections(readOnly: boolean): FormSection<Form>[] {
             label: "Corner radius scale",
             description: "1 is the storefront's standard. 0.5 to 2.",
             rules: { required: true, min: { value: 0.5, message: "Must be at least 0.5" }, max: { value: 2, message: "Must be at most 2" } },
-          },
-          {
-            type: FieldType.RADIO_GROUP,
-            name: "brand.typographyChoice",
-            label: "Typography",
-            description: "Each pairing covers Arabic and English.",
-            orientation: "vertical",
-            options: TYPOGRAPHY_OPTIONS,
           },
         ],
       },
