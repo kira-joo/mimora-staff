@@ -29,6 +29,13 @@ export class CreateDeliveryZoneDto {
   @Min(0)
   leadDays?: number;
 
+  /** The earliest delivery estimate in days; at most `leadDays`. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  leadDaysMin?: number;
+
   @IsOptional()
   @IsBoolean()
   active?: boolean;

@@ -77,6 +77,8 @@ export interface PlaceOrderInput {
     operatingHours: OperatingSchedule;
     /** `FulfilmentSettings.maxDaysAhead`. */
     maxDaysAhead: number;
+    /** `FulfilmentSettings.shippingDays` — see `ShippingInput.shippingDays`. */
+    shippingDays?: readonly number[];
     /** `FulfilmentSettings.customerCancelWindowMinutes` — `Order.customerCancelUntil` is `placedAt` plus this. */
     customerCancelWindowMinutes: number;
   };

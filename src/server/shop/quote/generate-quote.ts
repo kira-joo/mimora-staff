@@ -134,6 +134,7 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
         zoneId: zone._id.toString(),
         fee: zone.fee,
         estimatedDays: zone.leadDays,
+        estimatedDaysMin: zone.leadDaysMin ?? undefined,
         minimumOrder: zone.minimumOrder,
       }));
     }
@@ -152,6 +153,7 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
       timeZone: storeTimeZone(),
       operatingHours: await loadOperatingSchedule(),
       maxDaysAhead: fulfilmentSettings.maxDaysAhead,
+      shippingDays: fulfilmentSettings.shippingDays ?? undefined,
       storeWideOrderMinimum: fulfilmentSettings.orderMinimum,
     });
 

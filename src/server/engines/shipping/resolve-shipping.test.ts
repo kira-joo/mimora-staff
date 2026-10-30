@@ -318,3 +318,115 @@ describe("which order minimum applies", () => {
     expect(result.resolvable && result.fee.toFixed(2)).toBe("0.00");
   });
 });
+
+describe("shipping days — business-day counting, independent of store hours", () => {
+  // Mimora: ships Sunday–Thursday, a 3–5 shipping-day estimate, one day to dispatch, a 16:00 cutoff.
+  // 2026-08-28 is a Friday; 08-30 Sunday; 09-03 Thursday.
+  const SUN_TO_THU = [0, 1, 2, 3, 4];
+  const RANGE = { zone: "cairo", fee: toMoney("60.00"), estimatedDaysMin: 3, estimatedDays: 5 };
+  const mimora = (overrides: Partial<ShippingInput> = {}) => input({ zones: [RANGE], shippingDays: SUN_TO_THU, cutoffTime: "16:00", ...overrides });
+  const window = (result: ReturnType<typeof resolveShipping>) => {
+    if (!result.resolvable) throw new Error(`unresolvable: ${result.reason}`);
+    return { dispatch: day(result.dispatchBy), from: day(result.promisedWindow.from), to: day(result.promisedWindow.to) };
+  };
+
+  it("counts shipping days from the order day: Sunday morning → Wednesday to the next Sunday", () => {
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-08-30T10:00") })))).toEqual({ dispatch: "2026-08-31", from: "2026-09-02", to: "2026-09-06" });
+  });
+
+  it("starts an order placed on Friday or Saturday from Sunday, the next shipping day", () => {
+    const sunday = window(resolveShipping(mimora({ placedAt: cairo("2026-08-30T10:00") })));
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-08-28T10:00") })))).toEqual(sunday);
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-08-29T23:30") })))).toEqual(sunday);
+  });
+
+  it("skips the weekend inside the count: Thursday morning → Tuesday to Thursday", () => {
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-09-03T10:00") })))).toEqual({ dispatch: "2026-09-06", from: "2026-09-08", to: "2026-09-10" });
+  });
+
+  it("starts an order placed after the cutoff from the next shipping day — Thursday evening counts from Sunday", () => {
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-09-03T17:00") })))).toEqual({ dispatch: "2026-09-07", from: "2026-09-09", to: "2026-09-13" });
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-09-03T15:59") })))).toEqual({ dispatch: "2026-09-06", from: "2026-09-08", to: "2026-09-10" });
+  });
+
+  it("ignores the store's weekly opening hours — a store open only on Fridays still ships Sunday–Thursday", () => {
+    const fridaysOnly: OperatingSchedule = { weekly: [{ weekday: 5, ranges: [{ open: "10:00", close: "22:00" }] }], exceptions: [] };
+    const placedAt = cairo("2026-08-30T10:00");
+    expect(window(resolveShipping(mimora({ placedAt, operatingHours: fridaysOnly })))).toEqual(window(resolveShipping(mimora({ placedAt }))));
+  });
+
+  it("does not let the store's closing time move the start — only the cutoff does", () => {
+    const closesAtNoon: OperatingSchedule = { weekly: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, ranges: [{ open: "09:00", close: "12:00" }] })), exceptions: [] };
+    const placedAt = cairo("2026-08-30T14:00"); // after closing, before the cutoff
+    expect(window(resolveShipping(mimora({ placedAt, operatingHours: closesAtNoon })))).toEqual(window(resolveShipping(mimora({ placedAt }))));
+  });
+
+  it("honours a date the merchant marked closed (a public holiday) as a non-shipping day", () => {
+    const holiday: OperatingSchedule = { weekly: [], exceptions: [{ date: new Date("2026-08-31T00:00:00Z"), closed: true, ranges: [] }] };
+    expect(window(resolveShipping(mimora({ placedAt: cairo("2026-08-30T10:00"), operatingHours: holiday })))).toEqual({ dispatch: "2026-09-01", from: "2026-09-03", to: "2026-09-07" });
+  });
+
+  it("never turns an excluded weekday into a shipping day through an OPEN exception", () => {
+    const openSaturday: OperatingSchedule = { weekly: [], exceptions: [{ date: new Date("2026-09-05T00:00:00Z"), closed: false, ranges: [{ open: "10:00", close: "18:00" }] }] };
+    const placedAt = cairo("2026-08-30T10:00");
+    expect(window(resolveShipping(mimora({ placedAt, operatingHours: openSaturday })))).toEqual(window(resolveShipping(mimora({ placedAt }))));
+  });
+
+  it("leaves pickup on the store's hours: shipping days do not apply to it", () => {
+    const placedAt = cairo("2026-08-28T10:00");
+    expect(resolveShipping(mimora({ mode: "PICKUP", placedAt }))).toEqual(resolveShipping(input({ mode: "PICKUP", placedAt, cutoffTime: "16:00", zones: [RANGE] })));
+  });
+
+  it("refuses a promise beyond the booking window, measured in calendar days", () => {
+    expect(resolveShipping(mimora({ placedAt: cairo("2026-09-03T17:00"), maxDaysAhead: 9 }))).toEqual({ resolvable: false, reason: "BEYOND_BOOKING_WINDOW" });
+    expect(resolveShipping(mimora({ placedAt: cairo("2026-09-03T17:00"), maxDaysAhead: 10 })).resolvable).toBe(true);
+  });
+});
+
+describe("backward compatibility — no shipping days, no earliest estimate", () => {
+  const instants = ["2026-08-28T10:00", "2026-08-29T23:30", "2026-08-30T10:00", "2026-09-03T17:00"].map(cairo);
+  const schedules: OperatingSchedule[] = [
+    ALWAYS_OPEN,
+    { weekly: [0, 1, 2, 3, 4].map((weekday) => ({ weekday, ranges: [{ open: "09:00", close: "17:00" }] })), exceptions: [{ date: new Date("2026-08-31T00:00:00Z"), closed: true, ranges: [] }] },
+  ];
+
+  it("gives exactly the calendar-day result whether shippingDays is absent or empty", () => {
+    for (const placedAt of instants) {
+      for (const operatingHours of schedules) {
+        for (const mode of ["DELIVERY", "PICKUP"] as const) {
+          const legacy = resolveShipping(input({ mode, placedAt, operatingHours, cutoffTime: "16:00" }));
+          expect(resolveShipping(input({ mode, placedAt, operatingHours, cutoffTime: "16:00", shippingDays: [] }))).toEqual(legacy);
+          expect(resolveShipping(input({ mode, placedAt, operatingHours, cutoffTime: "16:00", shippingDays: undefined }))).toEqual(legacy);
+        }
+      }
+    }
+  });
+
+  it("keeps the window opening at dispatch when a zone has no earliest estimate", () => {
+    const result = resolveShipping(input({ placedAt: cairo("2026-08-28T10:00") }));
+    if (!result.resolvable) throw new Error("unresolvable");
+    expect(result.promisedWindow.from).toEqual(result.dispatchBy);
+  });
+});
+
+describe("a zone's earliest estimate", () => {
+  const at = cairo("2026-08-28T10:00"); // Friday, calendar-day mode
+  const zone = (estimatedDaysMin: number, estimatedDays: number) => [{ zone: "cairo", fee: toMoney("25.00"), estimatedDaysMin, estimatedDays }];
+  const window = (result: ReturnType<typeof resolveShipping>) => {
+    if (!result.resolvable) throw new Error("unresolvable");
+    return { dispatch: day(result.dispatchBy), from: day(result.promisedWindow.from), to: day(result.promisedWindow.to) };
+  };
+
+  it("opens the window at the earliest estimate, in calendar days without shipping days", () => {
+    expect(window(resolveShipping(input({ placedAt: at, zones: zone(3, 5) })))).toEqual({ dispatch: "2026-08-29", from: "2026-08-31", to: "2026-09-02" });
+  });
+
+  it("never opens the window before dispatch", () => {
+    expect(window(resolveShipping(input({ placedAt: at, zones: zone(0, 5) }))).from).toBe("2026-08-29");
+  });
+
+  it("never opens the window after it closes, even if the stored range is inverted", () => {
+    const result = window(resolveShipping(input({ placedAt: at, zones: zone(6, 5) })));
+    expect(result.from).toBe(result.to);
+  });
+});

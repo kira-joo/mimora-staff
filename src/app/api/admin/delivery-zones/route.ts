@@ -5,6 +5,8 @@ import { CreateDeliveryZoneDto } from "../../../../server/admin/dto/create-deliv
 import { listDeliveryZones } from "../../../../server/admin/delivery-zones/list-delivery-zones";
 import { deliveryZoneRepository } from "../../../../server/core/repositories";
 import { AppPermission } from "../../../../common/authorization/authorization-registry";
+import { ValidationFailedError } from "@kira-joo/backend-toolkit-core";
+import { leadDaysRangeProblems } from "../../../../server/fulfilment/delivery-zone-lead-days";
 
 export const GET = createGetRoute({
   auth: { permissions: [AppPermission.DELIVERY_ZONE.READ] },
@@ -20,6 +22,9 @@ export const POST = createPostRoute({
   body: CreateDeliveryZoneDto,
   revalidateTags: ["DELIVERY_ZONES"],
   handler: async ({ body }) => {
+    // `leadDays` defaults to 1 in the schema when omitted.
+    const problems = leadDaysRangeProblems(body.leadDaysMin, body.leadDays ?? 1);
+    if (problems.length > 0) throw new ValidationFailedError(problems);
     const zone = await deliveryZoneRepository.save({
       ...body,
       fee: toMoney(body.fee),

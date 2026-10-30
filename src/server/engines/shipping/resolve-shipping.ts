@@ -1,6 +1,6 @@
 import { ZERO, type Money } from "@kira-joo/toolkit-common";
 import type { OperatingSchedule, ShippingInput, ShippingResult, ShippingZoneConfig } from "./shipping.types";
-import { addDays, clockToMinutes, dayHours, daysBetween, nextOpenDay, startOfStoreDay, zonedDate, zonedMinutesOfDay } from "./store-calendar";
+import { addDays, advanceShippingDays, clockToMinutes, dayHours, daysBetween, nextOpenDay, nextShippingDay, startOfStoreDay, zonedDate, zonedMinutesOfDay } from "./store-calendar";
 
 /**
  * Zone resolution, fee, dispatch lead time, and the promised delivery window
@@ -26,6 +26,20 @@ import { addDays, clockToMinutes, dayHours, daysBetween, nextOpenDay, startOfSto
  *    regardless of destination, no zone lookup, no zone-specific minimum —
  *    the store-wide `storeWideOrderMinimum` applies instead. Previously
  *    selectable with no implementation behind it.
+ *
+ * **Shipping days (business-day counting).** When `shippingDays` is set, a
+ * DELIVERY promise counts SHIPPING days instead of calendar days, and the
+ * store's weekly opening hours play no part in it (they stay what the
+ * storefront displays): counting starts on the first shipping day on or after
+ * the placement day (the day after, past the cutoff), and every lead time
+ * advances that many shipping days, the start being day 0. A dated exception
+ * marked closed stops shipping too. Without `shippingDays` the original
+ * calendar-day algorithm runs unchanged. PICKUP is a store-hours concern and
+ * always uses the operating hours.
+ *
+ * **The window.** It runs from dispatch to the zone's latest estimate, as
+ * before; a zone's `estimatedDaysMin` (its earliest estimate) moves the start
+ * of the window later — never before dispatch, and never past its end.
  */
 export function resolveShipping(input: ShippingInput): ShippingResult {
   if (input.mode === "DELIVERY" && !input.deliveryEnabled) {
@@ -37,11 +51,17 @@ export function resolveShipping(input: ShippingInput): ShippingResult {
 
   const { timeZone } = input;
   const placedDate = zonedDate(input.placedAt, timeZone);
-  const startDate = firstCountedDay(input, placedDate);
+  const shippingDays = input.mode === "DELIVERY" && input.shippingDays && input.shippingDays.length > 0 ? input.shippingDays : undefined;
 
-  const dispatchDate = resolveDate(startDate, input.defaultDispatchLeadDays, input.operatingHours);
+  // Day 0 of the count, and how a lead time advances from it: shipping days when configured, else calendar days moved onto an open day.
+  const startDate = shippingDays ? nextShippingDay(afterCutoff(input) ? addDays(placedDate, 1) : placedDate, shippingDays, input.operatingHours) : firstCountedDay(input, placedDate);
+  if (!startDate) return { resolvable: false, reason: "NO_OPERATING_DAY" };
+  const advance = (days: number) => (shippingDays ? advanceShippingDays(startDate, days, shippingDays, input.operatingHours) : resolveDate(startDate, days, input.operatingHours));
+
+  const dispatchDate = advance(input.defaultDispatchLeadDays);
   if (!dispatchDate) return { resolvable: false, reason: "NO_OPERATING_DAY" };
 
+  let windowStart = dispatchDate;
   let arrivalDate = dispatchDate;
   let zone: ShippingZoneConfig | undefined;
 
@@ -49,11 +69,19 @@ export function resolveShipping(input: ShippingInput): ShippingResult {
     zone = input.zones.find((candidate) => candidate.zone === input.zoneName);
     if (!zone) return { resolvable: false, reason: "ZONE_NOT_FOUND" };
 
-    const estimatedDate = resolveDate(startDate, zone.estimatedDays, input.operatingHours);
+    const estimatedDate = advance(zone.estimatedDays);
     if (!estimatedDate) return { resolvable: false, reason: "NO_OPERATING_DAY" };
     // The zone's own estimate can never resolve to a date before dispatch —
     // whichever is later is the honest promise.
     arrivalDate = estimatedDate > dispatchDate ? estimatedDate : dispatchDate;
+
+    if (zone.estimatedDaysMin !== undefined) {
+      const earliestDate = advance(zone.estimatedDaysMin);
+      if (!earliestDate) return { resolvable: false, reason: "NO_OPERATING_DAY" };
+      // Never before dispatch, never past the latest estimate.
+      windowStart = earliestDate > dispatchDate ? earliestDate : dispatchDate;
+      if (windowStart > arrivalDate) windowStart = arrivalDate;
+    }
   }
 
   // The booking window: a promise further out than the merchant allows customers to book is not offered.
@@ -92,7 +120,7 @@ export function resolveShipping(input: ShippingInput): ShippingResult {
     zone: zone.zone,
     zoneId: zone.zoneId,
     dispatchBy,
-    promisedWindow: { from: dispatchBy, to: arrivalBy },
+    promisedWindow: { from: startOfStoreDay(windowStart, timeZone), to: arrivalBy },
     // The zone's own minimum wins when set; the store-wide value is the floor otherwise.
     orderMinimum: zone.minimumOrder ?? input.storeWideOrderMinimum,
   };
@@ -107,7 +135,7 @@ export function resolveShipping(input: ShippingInput): ShippingResult {
 function firstCountedDay(input: ShippingInput, placedDate: string): string {
   const minutes = zonedMinutesOfDay(input.placedAt, input.timeZone);
 
-  if (input.cutoffTime !== undefined && minutes >= clockToMinutes(input.cutoffTime)) {
+  if (afterCutoff(input)) {
     return addDays(placedDate, 1);
   }
 
@@ -116,6 +144,11 @@ function firstCountedDay(input: ShippingInput, placedDate: string): string {
     return addDays(placedDate, 1);
   }
   return placedDate;
+}
+
+/** Whether the order was placed at or after the daily cutoff, on the store's clock. */
+function afterCutoff(input: ShippingInput): boolean {
+  return input.cutoffTime !== undefined && zonedMinutesOfDay(input.placedAt, input.timeZone) >= clockToMinutes(input.cutoffTime);
 }
 
 /**

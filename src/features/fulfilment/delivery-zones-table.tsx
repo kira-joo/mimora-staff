@@ -134,7 +134,7 @@ export function DeliveryZonesTable() {
               <span className="st-figure whitespace-nowrap">{money(row.minimumOrder)}</span>
             ),
         },
-        { key: "leadDays", header: "Lead time", render: (row) => <span className="whitespace-nowrap">{row.leadDays === 1 ? "1 day" : `${row.leadDays} days`}</span> },
+        { key: "leadDays", header: "Delivery", render: (row) => <span className="whitespace-nowrap">{row.leadDaysMin !== undefined && row.leadDaysMin !== row.leadDays ? `${row.leadDaysMin}–${row.leadDays} days` : row.leadDays === 1 ? "1 day" : `${row.leadDays} days`}</span> },
         {
           key: "active",
           header: "Status",

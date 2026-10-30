@@ -31,6 +31,13 @@ export class UpdateDeliveryZoneDto {
   @Min(0)
   leadDays?: number;
 
+  /** The earliest delivery estimate in days; at most `leadDays`. null removes it (the window opens at dispatch again). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  leadDaysMin?: number | null;
+
   @IsOptional()
   @IsBoolean()
   active?: boolean;

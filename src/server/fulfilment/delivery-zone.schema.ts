@@ -61,9 +61,17 @@ export class DeliveryZoneSchema {
   @MongoField(moneyField())
   minimumOrder?: Money;
 
-  /** Dispatch lead time in days, matching `ShippingZoneConfig.estimatedDays` — this domain has no delivery-slot concept, only day-granularity promises. */
+  /**
+   * The latest delivery estimate, in days from the day counting starts (the order day, or the next day past
+   * the cutoff) — shipping days when `FulfilmentSettings.shippingDays` is set, calendar days otherwise. Matches
+   * `ShippingZoneConfig.estimatedDays`; this domain has no delivery-slot concept, only day-granularity promises.
+   */
   @MongoField({ type: Number, required: true, default: 1 })
   leadDays!: number;
+
+  /** The earliest delivery estimate, same unit; absent means the promised window opens at dispatch. Never more than `leadDays`. */
+  @MongoField({ type: Number, required: false })
+  leadDaysMin?: number;
 
   @Filterable()
   @MongoField({ type: Boolean, default: true })

@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from "class-validator";
 import { MAX_CARRIERS, MAX_URL_TEMPLATE_LENGTH } from "../../fulfilment/carrier-tracking";
 
 const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
@@ -44,6 +44,17 @@ export class UpdateFulfilmentSettingsDto {
   @IsInt()
   @Min(0)
   defaultDispatchLeadDays?: number;
+
+  /** Weekdays orders ship on (0 = Sunday … 6 = Saturday); null clears it (calendar-day promises again). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1, { message: "shippingDays must include at least one weekday." })
+  @ArrayMaxSize(7)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  shippingDays?: number[] | null;
 
   @IsOptional()
   @IsString()

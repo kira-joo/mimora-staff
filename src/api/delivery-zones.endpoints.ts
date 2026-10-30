@@ -9,7 +9,10 @@ export interface DeliveryZone {
   fee: string;
   /** The zone's own minimum; absent means the store-wide minimum applies. */
   minimumOrder?: string;
+  /** Latest delivery estimate, in days from when counting starts. */
   leadDays: number;
+  /** Earliest delivery estimate; absent means the window opens at dispatch. */
+  leadDaysMin?: number;
   active: boolean;
   order: number;
   createdAt?: string;
@@ -23,6 +26,8 @@ export interface DeliveryZoneInput {
   /** On an update, `null` removes the zone's own minimum. */
   minimumOrder?: string | null;
   leadDays?: number;
+  /** On an update, `null` removes the earliest estimate. */
+  leadDaysMin?: number | null;
   active?: boolean;
 }
 

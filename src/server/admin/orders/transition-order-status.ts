@@ -7,6 +7,7 @@ import { appendOrderTimelineEntry } from "../../commerce/order-timeline";
 import { assertTransition, releasesStock, timelineEventForStatus } from "../../engines/order-state/order-state-machine";
 import type { OrderStatus } from "../../engines/order-state/order-state.types";
 import { releaseOrderStock } from "../../commerce/release-order-stock";
+import { confirmationPromise } from "./confirmation-promise";
 
 export interface TransitionOrderStatusInput {
   orderId: string;
@@ -55,13 +56,21 @@ export async function transitionOrderStatus(input: TransitionOrderStatusInput) {
   const settings = enteredTracking ? await fulfilmentSettingsRepository.findOne({ where: {}, skipThrowError: true }) : null;
   const snapshot = enteredTracking ? buildTrackingSnapshot(input.tracking!, settings?.carriers ?? []) : undefined;
   const staffObjectId = new mongoose.Types.ObjectId(staffId);
+  // Confirming re-dates a delivery estimate from now (confirmation-promise.ts) — read before the transaction, like the tracking settings.
+  const promise = to === "CONFIRMED" ? await confirmationPromise(order, now) : null;
 
   return withTransaction(async (tx) => {
     assertTransition({ from: order.status, to, mode: order.fulfilment.mode, paymentStatus: order.payment.status, reason });
 
     await orderRepository.updateAtomic(
       { _id: order._id, status: order.status, "payment.status": order.payment.status },
-      { $set: { status: to, ...(snapshot ? { tracking: { ...snapshot, updatedAt: now, updatedBy: staffObjectId } } : {}) } }
+      {
+        $set: {
+          status: to,
+          ...(snapshot ? { tracking: { ...snapshot, updatedAt: now, updatedBy: staffObjectId } } : {}),
+          ...(promise ? { "fulfilment.dispatchBy": promise.dispatchBy, "fulfilment.promisedWindow": promise.promisedWindow } : {}),
+        },
+      }
     );
 
     await appendOrderTimelineEntry(order._id, {

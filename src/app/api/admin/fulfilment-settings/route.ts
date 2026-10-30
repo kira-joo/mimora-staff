@@ -19,9 +19,9 @@ export const GET = createGetRoute({
 /**
  * Optional settings a merchant can remove: no order minimum, no flat fee
  * (a FLAT store then charges nothing — `resolveShipping`'s `?? ZERO`), no
- * daily cutoff.
+ * daily cutoff, no shipping days (delivery promises count calendar days again).
  */
-const CLEARABLE_FULFILMENT_SETTINGS = ["orderMinimum", "flatShippingFee", "cutoffTime"] as const;
+const CLEARABLE_FULFILMENT_SETTINGS = ["orderMinimum", "flatShippingFee", "cutoffTime", "shippingDays"] as const;
 
 export const PUT = createPutRoute({
   auth: { permissions: [AppPermission.FULFILMENT_SETTINGS.UPDATE] },

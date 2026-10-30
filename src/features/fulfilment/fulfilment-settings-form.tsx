@@ -15,12 +15,14 @@ import { AppPermission } from "src/common/authorization/authorization-registry";
 import { usePermission } from "src/features/auth/use-permission";
 import { inputField, moneyField, wholeNumberField } from "./fulfilment-fields";
 import { TIME_PATTERN } from "./fulfilment-values";
+import { ShippingDaysField } from "./shipping-days-field";
 
 /** The form holds what the inputs hold (strings); `toBody` converts once, at submit. */
 interface SettingsFormValues {
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
   defaultDispatchLeadDays: string;
+  shippingDays: number[];
   cutoffTime: string;
   maxDaysAhead: string;
   orderMinimum: string;
@@ -55,7 +57,7 @@ const SECTIONS: FormSection<SettingsFormValues>[] = [
     layout: "grid",
     columns: 2,
     fields: [
-      wholeNumberField<SettingsFormValues>({ name: "defaultDispatchLeadDays", label: "Dispatch lead time (days)", required: true, min: 0, description: "Days between an order and its dispatch." }),
+      wholeNumberField<SettingsFormValues>({ name: "defaultDispatchLeadDays", label: "Dispatch lead time (days)", required: true, min: 0, description: "Days between an order and its dispatch (shipping days, when shipping days are set)." }),
       inputField<SettingsFormValues>({
         name: "cutoffTime",
         label: "Daily cutoff",
@@ -65,6 +67,12 @@ const SECTIONS: FormSection<SettingsFormValues>[] = [
         rules: { validate: (value) => (value === "" || value === undefined || value === null || TIME_PATTERN.test(String(value)) ? true : 'Use 24-hour HH:mm, like "18:00".') },
       }),
       wholeNumberField<SettingsFormValues>({ name: "maxDaysAhead", label: "Booking window (days)", required: true, min: 1, description: "The furthest day ahead, counted from today in the store's time zone, that an order may promise for delivery or pickup. If the earliest date is beyond it (a long closure, a slow zone), the order cannot be placed." }),
+      {
+        type: FieldType.CUSTOM,
+        name: "shippingDays",
+        colSpan: 2,
+        render: ({ field }) => <ShippingDaysField value={(field.value as number[] | undefined) ?? []} onChange={field.onChange} />,
+      },
     ],
   },
   {
@@ -120,6 +128,7 @@ function toValues(settings: FulfilmentSettings): SettingsFormValues {
     deliveryEnabled: settings.deliveryEnabled,
     pickupEnabled: settings.pickupEnabled,
     defaultDispatchLeadDays: String(settings.defaultDispatchLeadDays),
+    shippingDays: settings.shippingDays ?? [],
     cutoffTime: settings.cutoffTime ?? "",
     maxDaysAhead: String(settings.maxDaysAhead),
     orderMinimum: settings.orderMinimum ?? "",
@@ -144,6 +153,8 @@ function toBody(values: SettingsFormValues): FulfilmentSettingsInput {
     deliveryEnabled: values.deliveryEnabled,
     pickupEnabled: values.pickupEnabled,
     defaultDispatchLeadDays: Number(values.defaultDispatchLeadDays),
+    // None ticked clears the setting: delivery estimates count calendar days again.
+    shippingDays: values.shippingDays.length > 0 ? values.shippingDays : null,
     cutoffTime: blankToNull(values.cutoffTime),
     maxDaysAhead: Number(values.maxDaysAhead),
     orderMinimum: blankToNull(values.orderMinimum),

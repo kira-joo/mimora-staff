@@ -120,6 +120,63 @@ describe("fulfilment settings orderMinimum, flatShippingFee, cutoffTime", () => 
   });
 });
 
+describe("fulfilment settings shippingDays", () => {
+  it("is absent unless set, can be set, left alone, and cleared — calendar-day estimates again", async () => {
+    await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { cutoffTime: "16:00" });
+    expect(await rawSettings()).not.toHaveProperty("shippingDays");
+
+    expect((await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { shippingDays: [0, 1, 2, 3, 4] })).status).toBe(200);
+    expect((await rawSettings())?.shippingDays).toEqual([0, 1, 2, 3, 4]);
+
+    await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { cutoffTime: "17:00" });
+    expect((await rawSettings())?.shippingDays).toEqual([0, 1, 2, 3, 4]);
+
+    expect((await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { shippingDays: null })).status).toBe(200);
+    expect(await rawSettings()).not.toHaveProperty("shippingDays");
+  });
+
+  it("refuses no days, a repeated day, or a day outside Sunday–Saturday", async () => {
+    for (const shippingDays of [[], [1, 1], [7], [-1], [0.5]]) {
+      expect((await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { shippingDays })).status).toBe(400);
+    }
+    expect(await rawSettings()).toBeNull();
+  });
+});
+
+describe("delivery zone leadDaysMin — the earliest delivery estimate", () => {
+  const zone = { name: { en: "Cairo", ar: "القاهرة" }, areas: [], fee: "60", leadDays: 5 };
+
+  it("is absent unless set, can be set, left alone, and cleared", async () => {
+    const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", zone);
+    expect(await rawZone(body._id)).not.toHaveProperty("leadDaysMin");
+
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { leadDaysMin: 3 }, body._id)).status).toBe(200);
+    expect((await rawZone(body._id))?.leadDaysMin).toBe(3);
+
+    await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { fee: "65" }, body._id);
+    expect((await rawZone(body._id))?.leadDaysMin).toBe(3);
+
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { leadDaysMin: null }, body._id)).status).toBe(200);
+    expect(await rawZone(body._id)).not.toHaveProperty("leadDaysMin");
+  });
+
+  it("refuses an earliest estimate later than the latest — on create, and on an update of either bound alone", async () => {
+    expect((await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, leadDaysMin: 6 })).status).toBe(400);
+    expect((await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, leadDays: undefined, leadDaysMin: 2 })).status).toBe(400); // leadDays defaults to 1
+
+    const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, leadDaysMin: 3 });
+    // Raising only the earliest past the stored latest.
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { leadDaysMin: 6 }, body._id)).status).toBe(400);
+    // Lowering only the latest below the stored earliest.
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { leadDays: 2 }, body._id)).status).toBe(400);
+    const stored = await rawZone(body._id);
+    expect([stored?.leadDaysMin, stored?.leadDays]).toEqual([3, 5]);
+
+    // Both moved together is fine, as is an equal pair.
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { leadDaysMin: 2, leadDays: 2 }, body._id)).status).toBe(200);
+  });
+});
+
 describe("pickup location coordinates", () => {
   const location = { name: { en: "Zamalek", ar: "الزمالك" }, address: { en: "26th of July St", ar: "شارع ٢٦ يوليو" }, phone: "+201000000000" };
 

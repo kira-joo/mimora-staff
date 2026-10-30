@@ -14,6 +14,8 @@ export interface FulfilmentSettings {
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
   defaultDispatchLeadDays: number;
+  /** Weekdays orders ship on (0 = Sunday … 6 = Saturday); absent means delivery estimates count calendar days. */
+  shippingDays?: number[];
   cutoffTime?: string;
   maxDaysAhead: number;
   orderMinimum?: string;
@@ -29,8 +31,9 @@ export interface FulfilmentSettings {
   updatedAt?: string;
 }
 
-/** On an update, `null` clears an optional setting: no cutoff, no order minimum, no flat fee. */
-export type FulfilmentSettingsInput = Partial<Omit<FulfilmentSettings, "cutoffTime" | "orderMinimum" | "flatShippingFee">> & {
+/** On an update, `null` clears an optional setting: no cutoff, no order minimum, no flat fee, no shipping days. */
+export type FulfilmentSettingsInput = Partial<Omit<FulfilmentSettings, "cutoffTime" | "orderMinimum" | "flatShippingFee" | "shippingDays">> & {
+  shippingDays?: number[] | null;
   cutoffTime?: string | null;
   orderMinimum?: string | null;
   flatShippingFee?: string | null;

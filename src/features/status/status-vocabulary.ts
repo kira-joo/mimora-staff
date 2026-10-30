@@ -115,6 +115,7 @@ export const TONE_VAR: Record<StatusTone, string> = {
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
   COD: "Cash on delivery",
   INSTAPAY: "InstaPay",
+  VODAFONE_CASH: "Vodafone Cash",
   WALLET_TRANSFER: "Wallet transfer",
 };
 

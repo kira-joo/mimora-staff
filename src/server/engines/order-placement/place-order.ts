@@ -130,6 +130,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrderRes
       timeZone: input.shippingSettings.timeZone,
       operatingHours: input.shippingSettings.operatingHours,
       maxDaysAhead: input.shippingSettings.maxDaysAhead,
+      shippingDays: input.shippingSettings.shippingDays,
       storeWideOrderMinimum: input.shippingSettings.storeWideOrderMinimum,
     });
 
@@ -256,6 +257,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrderRes
       fee: shippingResult.fee,
       dispatchBy: shippingResult.dispatchBy,
       promisedWindow: shippingResult.promisedWindow,
+      // A delivery estimate counts from confirmation: this one is provisional until staff confirm the order.
+      ...(input.fulfilment.mode === "DELIVERY" ? { promiseFromConfirmation: true } : {}),
     };
 
     const paymentStatus = initialPaymentStatus(input.requiresPaymentProof, input.requiresProviderIntegration);

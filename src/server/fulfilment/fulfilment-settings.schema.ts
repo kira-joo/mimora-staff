@@ -39,6 +39,15 @@ export class FulfilmentSettingsSchema {
   defaultDispatchLeadDays!: number;
 
   /**
+   * The weekdays orders are shipped on (0 = Sunday … 6 = Saturday), independent of the store's opening hours
+   * (`OperatingHours`, which the storefront displays). Set, a delivery promise counts business days on these
+   * weekdays alone (`resolveShipping`); absent, the calendar-day algorithm runs. `default: undefined` keeps an
+   * unset value absent — Mongoose would otherwise default an array to `[]`.
+   */
+  @MongoField({ type: [Number], required: false, default: undefined })
+  shippingDays?: number[];
+
+  /**
    * Orders placed after this time of day (HH:mm, in the store's time zone —
    * `STORE_TIMEZONE`, one per deployment, so no per-record zone field) start
    * dispatch lead-day counting the following day.

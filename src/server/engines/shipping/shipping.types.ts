@@ -20,7 +20,10 @@ export interface ShippingZoneConfig {
   label?: string;
   zoneId?: string;
   fee: Money;
+  /** The zone's latest estimate, in days from the start of counting (shipping days when `ShippingInput.shippingDays` is set). */
   estimatedDays: number;
+  /** The zone's earliest estimate, same unit; absent means the window opens at dispatch. Never more than `estimatedDays`. */
+  estimatedDaysMin?: number;
   /** The zone's own minimum; absent means the store-wide one applies. */
   minimumOrder?: Money;
 }
@@ -65,8 +68,16 @@ export interface ShippingInput {
   placedAt: Date;
   /** The store's IANA zone (`storeTimeZone()`). Required, never defaulted: "today", the cutoff and every promised date are the store's, not the server's. */
   timeZone: string;
-  /** Opening days and hours. Dispatch, delivery and pickup readiness only ever land on an open day. */
+  /**
+   * Opening days and hours. Without `shippingDays`, dispatch, delivery and pickup readiness only ever land on an
+   * open day. With `shippingDays`, a DELIVERY promise ignores the weekly hours and honours only dated closures.
+   */
   operatingHours: OperatingSchedule;
+  /**
+   * `FulfilmentSettings.shippingDays` — the weekdays (0 = Sunday … 6 = Saturday) orders are shipped on. Set, a
+   * DELIVERY promise counts business days on these weekdays alone; absent or empty, the calendar-day algorithm runs.
+   */
+  shippingDays?: readonly number[];
   /** `FulfilmentSettings.maxDaysAhead` — how far ahead a customer may book: the promised window may not end more than this many days after the placement day. */
   maxDaysAhead: number;
   /** Store-wide fallback minimum (`FulfilmentSettings.orderMinimum`) — used for PICKUP, for `FLAT`, and as the floor when a matched zone's own `minimumOrder` is unset. */

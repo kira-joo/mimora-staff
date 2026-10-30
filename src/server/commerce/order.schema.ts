@@ -187,6 +187,12 @@ export class OrderSchema {
         zoneId: { type: mongoose.Schema.Types.ObjectId, required: false },
         fee: moneyField({ required: true }),
         dispatchBy: { type: Date, required: false },
+        /**
+         * Set on delivery orders placed under the "estimate counts from confirmation" rule: confirming the order
+         * re-dates `dispatchBy`/`promisedWindow` from the confirmation instant (admin/orders/confirmation-promise.ts).
+         * Absent on orders placed before the rule — their saved promise is never recalculated.
+         */
+        promiseFromConfirmation: { type: Boolean, required: false },
         promisedWindow: {
           type: new mongoose.Schema(
             {
@@ -222,6 +228,7 @@ export class OrderSchema {
     zoneId?: mongoose.Types.ObjectId;
     fee: Money;
     dispatchBy?: Date;
+    promiseFromConfirmation?: boolean;
     promisedWindow?: { from: Date; to: Date };
   };
 

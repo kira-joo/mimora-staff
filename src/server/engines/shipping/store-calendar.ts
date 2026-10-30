@@ -97,6 +97,39 @@ export function nextOpenDay(date: string, schedule: OperatingSchedule): string |
   return null;
 }
 
+/**
+ * Whether the courier side works on a calendar day — independent of the store's weekly opening hours.
+ * Its weekday must be one the merchant ships on (`FulfilmentSettings.shippingDays`, 0 = Sunday), and no dated
+ * exception may close it: a date the merchant marked closed (a public holiday) stops shipping too. An OPEN
+ * exception never adds a shipping day on an excluded weekday. Weekly store hours play no part.
+ */
+export function isShippingDay(date: string, shippingDays: readonly number[], schedule: OperatingSchedule): boolean {
+  if (!shippingDays.includes(weekdayOf(date))) return false;
+  const exception = schedule.exceptions.find((candidate) => candidate.date.toISOString().slice(0, 10) === date);
+  return !exception?.closed;
+}
+
+/** The first shipping day on or after `date`, or `null` if none within a year. */
+export function nextShippingDay(date: string, shippingDays: readonly number[], schedule: OperatingSchedule): string | null {
+  let candidate = date;
+  for (let step = 0; step < 366; step += 1) {
+    if (isShippingDay(candidate, shippingDays, schedule)) return candidate;
+    candidate = addDays(candidate, 1);
+  }
+  return null;
+}
+
+/**
+ * `count` shipping days after `start` — business-day counting: each step moves to the next shipping day, and
+ * `start` itself is day 0 (the same convention as the calendar-day `addDays(start, n)` it replaces). `start` must
+ * already be a shipping day. `null` when a step finds no shipping day within a year.
+ */
+export function advanceShippingDays(start: string, count: number, shippingDays: readonly number[], schedule: OperatingSchedule): string | null {
+  let date: string | null = start;
+  for (let step = 0; step < count && date; step += 1) date = nextShippingDay(addDays(date, 1), shippingDays, schedule);
+  return date;
+}
+
 /** The instant a store-calendar day begins. */
 export function startOfStoreDay(date: string, timeZone: string): Date {
   return startOfZonedDate(date, timeZone);

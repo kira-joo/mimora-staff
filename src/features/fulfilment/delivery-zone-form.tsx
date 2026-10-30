@@ -16,6 +16,7 @@ interface ZoneFormValues {
   fee: string;
   minimumOrder: string;
   leadDays: string;
+  leadDaysMin: string;
   active: boolean;
 }
 
@@ -42,7 +43,14 @@ const SECTIONS: FormSection<ZoneFormValues>[] = [
     fields: [
       moneyField<ZoneFormValues>({ name: "fee", label: "Delivery fee", required: true, description: "Charged for orders to this zone. Enter 0 for free delivery." }),
       moneyField<ZoneFormValues>({ name: "minimumOrder", label: "Minimum order", allowBlank: true, description: "Smallest order this zone accepts. Leave empty to use the store-wide minimum; enter 0 for no minimum in this zone." }),
-      wholeNumberField<ZoneFormValues>({ name: "leadDays", label: "Lead time (days)", required: true, min: 0, description: "Days from dispatch to delivery." }),
+      wholeNumberField<ZoneFormValues>({
+        name: "leadDaysMin",
+        label: "Earliest delivery (days)",
+        allowBlank: true,
+        min: 0,
+        description: "Optional. The start of the delivery window customers see; no later than the latest delivery. Leave empty for the window to open at dispatch.",
+      }),
+      wholeNumberField<ZoneFormValues>({ name: "leadDays", label: "Latest delivery (days)", required: true, min: 0, description: "Days from when counting starts (the order day, or the next day after the cutoff) to delivery. Shipping days when shipping days are set; calendar days otherwise." }),
     ],
   },
   {
@@ -60,11 +68,12 @@ export function mapDeliveryZoneToFormValues(oldData?: DeliveryZone): ZoneFormVal
     fee: oldData?.fee ?? "",
     minimumOrder: oldData?.minimumOrder ?? "",
     leadDays: oldData ? String(oldData.leadDays) : "1",
+    leadDaysMin: oldData?.leadDaysMin === undefined ? "" : String(oldData.leadDaysMin),
     active: oldData?.active ?? true,
   };
 }
 
-/** Form text → wire body. A blank minimum is omitted on a create (none set) and sent as null on an edit, which removes it. */
+/** Form text → wire body. A blank minimum or earliest delivery is omitted on a create (none set) and sent as null on an edit, which removes it. */
 function toBody(values: ZoneFormValues, isEdit: boolean): DeliveryZoneInput {
   return {
     name: values.name,
@@ -72,6 +81,7 @@ function toBody(values: ZoneFormValues, isEdit: boolean): DeliveryZoneInput {
     fee: values.fee.trim(),
     minimumOrder: values.minimumOrder.trim() === "" ? (isEdit ? null : undefined) : values.minimumOrder.trim(),
     leadDays: Number(values.leadDays),
+    leadDaysMin: values.leadDaysMin.trim() === "" ? (isEdit ? null : undefined) : Number(values.leadDaysMin),
     active: values.active,
   };
 }

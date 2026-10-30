@@ -121,6 +121,7 @@ export async function placeOrderService(input: PlaceOrderServiceInput): Promise<
       zoneId: zone._id.toString(),
       fee: zone.fee,
       estimatedDays: zone.leadDays,
+      estimatedDaysMin: zone.leadDaysMin ?? undefined,
       minimumOrder: zone.minimumOrder,
     }));
   }
@@ -189,6 +190,7 @@ export async function placeOrderService(input: PlaceOrderServiceInput): Promise<
       timeZone: storeTimeZone(),
       operatingHours: await loadOperatingSchedule(),
       maxDaysAhead: fulfilmentSettings.maxDaysAhead,
+      shippingDays: fulfilmentSettings.shippingDays ?? undefined,
       customerCancelWindowMinutes: fulfilmentSettings.customerCancelWindowMinutes,
     },
     locale,
