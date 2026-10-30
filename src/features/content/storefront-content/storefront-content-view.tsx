@@ -17,7 +17,7 @@ export function StorefrontContentView() {
   return (
     <QueryState query={query} entityName="storefront content">
       {(content) => (
-        <PageShell title="Storefront content" description="The announcement bar, navigation and home page sections. Edit a draft, preview it, then publish." maxWidth="3xl">
+        <PageShell title="Storefront content" description="The announcement bar, navigation and home page sections. Edit a draft, preview it, then publish.">
           <StorefrontContentForm
             key={`${content.draftRevision}:${content.publishedRevision ?? "none"}`}
             endpoint={saveStorefrontContentDraftEndpoint}

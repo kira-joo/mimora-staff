@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New size guide" };
 export default function NewSizeguidePage() {
   return (
     <PermissionGuard permission={AppPermission.SIZE_GUIDE.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New size guide" backRoute={{ path: AppRoute.SIZE_GUIDES, label: "Size guides" }} maxWidth="4xl">
+      <PageShell title="New size guide" backRoute={{ path: AppRoute.SIZE_GUIDES, label: "Size guides" }}>
         <SizeGuideForm endpoint={createSizeGuideEndpoint} />
       </PageShell>
     </PermissionGuard>

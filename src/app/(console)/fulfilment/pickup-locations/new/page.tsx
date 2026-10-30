@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New pickup location" };
 export default function NewPickupLocationPage() {
   return (
     <PermissionGuard permission={AppPermission.PICKUP_LOCATION.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New pickup location" backRoute={{ path: AppRoute.PICKUP_LOCATIONS, label: "Pickup locations" }} maxWidth="3xl">
+      <PageShell title="New pickup location" backRoute={{ path: AppRoute.PICKUP_LOCATIONS, label: "Pickup locations" }}>
         <PickupLocationForm endpoint={createPickupLocationEndpoint} />
       </PageShell>
     </PermissionGuard>

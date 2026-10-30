@@ -10,7 +10,7 @@ export function OperatingHoursView() {
   return (
     <QueryState query={query} entityName="operating hours">
       {(hours) => (
-        <PageShell title="Operating hours" description="When the store is open, with dated exceptions for holidays and closures." maxWidth="3xl">
+        <PageShell title="Operating hours" description="When the store is open, with dated exceptions for holidays and closures.">
           <OperatingHoursForm key={hours.updatedAt} hours={hours} />
         </PageShell>
       )}

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Roles" };
 export default function RolesPage() {
   return (
     <PermissionGuard permission={AppPermission.ROLE.READ} fallback={<NoAccess />}>
-      <PageShell title="Roles" description="The fixed set of roles you can give to team members. They can't be edited here." backRoute={{ path: AppRoute.TEAM, label: "Team" }} maxWidth="4xl">
+      <PageShell title="Roles" description="The fixed set of roles you can give to team members. They can't be edited here." backRoute={{ path: AppRoute.TEAM, label: "Team" }}>
         <RolesView />
       </PageShell>
     </PermissionGuard>

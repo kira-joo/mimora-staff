@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New page" };
 export default function NewContentPage() {
   return (
     <PermissionGuard permission={AppPermission.PAGE.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New page" backRoute={{ path: AppRoute.PAGES, label: "Pages" }} maxWidth="3xl">
+      <PageShell title="New page" backRoute={{ path: AppRoute.PAGES, label: "Pages" }}>
         <PageForm endpoint={createPageEndpoint} />
       </PageShell>
     </PermissionGuard>

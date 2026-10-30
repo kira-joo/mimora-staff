@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Reports" };
 export default function ReportsPage() {
   return (
     <PermissionGuard permission={CustomPermission.REPORT_READ} fallback={<NoAccess />}>
-      <PageShell title="Reports" description="Sales, stock that needs reordering, and payments waiting too long." maxWidth="5xl">
+      <PageShell title="Reports" description="Sales, stock that needs reordering, and payments waiting too long.">
         <div className="flex flex-col gap-6">
           <SalesSummarySection />
           <div className="grid gap-6 lg:grid-cols-2">

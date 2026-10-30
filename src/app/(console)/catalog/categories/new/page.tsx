@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New category" };
 export default function NewCategoryPage() {
   return (
     <PermissionGuard permission={AppPermission.CATEGORY.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New category" backRoute={{ path: AppRoute.CATEGORIES, label: "Categories" }} maxWidth="3xl">
+      <PageShell title="New category" backRoute={{ path: AppRoute.CATEGORIES, label: "Categories" }}>
         <CategoryForm endpoint={createCategoryEndpoint} />
       </PageShell>
     </PermissionGuard>

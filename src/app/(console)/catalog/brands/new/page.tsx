@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New brand" };
 export default function NewBrandPage() {
   return (
     <PermissionGuard permission={AppPermission.BRAND.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New brand" backRoute={{ path: AppRoute.BRANDS, label: "Brands" }} maxWidth="3xl">
+      <PageShell title="New brand" backRoute={{ path: AppRoute.BRANDS, label: "Brands" }}>
         <BrandForm endpoint={createBrandEndpoint} />
       </PageShell>
     </PermissionGuard>

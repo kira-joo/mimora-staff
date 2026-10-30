@@ -100,7 +100,6 @@ function Detail({ batch, refetch }: { batch: CatalogImportBatch; refetch: () => 
           </div>
         ) : null
       }
-      maxWidth="5xl"
     >
       <div className="flex flex-col gap-4">
         {staged ? (

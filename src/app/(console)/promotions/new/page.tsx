@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New promotion" };
 export default function NewPromotionPage() {
   return (
     <PermissionGuard permission={AppPermission.PROMOTION.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New promotion" backRoute={{ path: AppRoute.PROMOTIONS, label: "Promotions" }} maxWidth="3xl">
+      <PageShell title="New promotion" backRoute={{ path: AppRoute.PROMOTIONS, label: "Promotions" }}>
         <PromotionForm endpoint={createPromotionEndpoint} />
       </PageShell>
     </PermissionGuard>

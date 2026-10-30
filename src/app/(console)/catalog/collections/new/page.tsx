@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New collection" };
 export default function NewCollectionPage() {
   return (
     <PermissionGuard permission={AppPermission.COLLECTION.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New collection" backRoute={{ path: AppRoute.COLLECTIONS, label: "Collections" }} maxWidth="3xl">
+      <PageShell title="New collection" backRoute={{ path: AppRoute.COLLECTIONS, label: "Collections" }}>
         <CollectionForm endpoint={createCollectionEndpoint} />
       </PageShell>
     </PermissionGuard>

@@ -34,7 +34,6 @@ export function NotificationsPageView() {
     <PageShell
       title="Notifications"
       description="New orders, payment proofs, return requests and stock running low."
-      maxWidth="3xl"
       actions={
         <div className="flex flex-wrap gap-2">
           <CustomButton variant="outline" onClick={() => { setUnreadOnly((value) => !value); setPage(1); }} aria-pressed={unreadOnly}>

@@ -61,7 +61,6 @@ export function OrdersBoard() {
     <PageShell
       title="Orders board"
       description="Everything that needs a hand, oldest first. Tap the button on a card to move it to its next step."
-      maxWidth="full"
       actions={
         <Link href={AppRoute.ORDERS} className={LINK_BUTTON}>
           <List aria-hidden="true" className="size-4" />

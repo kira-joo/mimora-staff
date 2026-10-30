@@ -189,7 +189,7 @@ export function PaymentView() {
   return (
     <QueryState query={query} entityName="payment settings">
       {(settings) => (
-        <PageShell title="Payment settings" description="Where customers send money, and how long they have to pay." maxWidth="3xl">
+        <PageShell title="Payment settings" description="Where customers send money, and how long they have to pay.">
           {canUpdate ? null : <ReadOnlyNotice />}
           <PaymentForm key={settings.updatedAt} settings={settings} canUpdate={canUpdate} />
         </PageShell>

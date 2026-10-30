@@ -24,7 +24,7 @@ const REFRESH_MS = 60_000;
 export function TodayView() {
   const query = useRequesterQuery({ endpoint: todayEndpoint, queryOptions: { refetchInterval: REFRESH_MS } });
   return (
-    <PageShell title="Today" description="What needs doing right now." maxWidth="5xl">
+    <PageShell title="Today" description="What needs doing right now.">
       <QueryState query={query} entityName="today">
         {(today) => <TodayPanels today={today} />}
       </QueryState>

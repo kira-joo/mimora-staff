@@ -15,7 +15,6 @@ export default function NewProductPage() {
         title="New product"
         description="Starts as a draft. Add its variants on the next page, then publish."
         backRoute={{ path: AppRoute.PRODUCTS, label: "Products" }}
-        maxWidth="4xl"
       >
         <ProductForm endpoint={createProductEndpoint} />
       </PageShell>

@@ -87,7 +87,7 @@ export function InventorySettingsView() {
   return (
     <QueryState query={query} entityName="inventory settings">
       {(settings) => (
-        <PageShell title="Inventory settings" description="When stock counts as low, and what happens at zero." maxWidth="3xl">
+        <PageShell title="Inventory settings" description="When stock counts as low, and what happens at zero.">
           {canUpdate ? null : <ReadOnlyNotice />}
           <InventoryForm key={settings.updatedAt} settings={settings} canUpdate={canUpdate} />
         </PageShell>

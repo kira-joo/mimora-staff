@@ -18,7 +18,6 @@ export function StaffEditView({ id }: { id: string }) {
           title={<span dir="auto">{member.name}</span>}
           description={<bdi dir="ltr">{member.email}</bdi>}
           backRoute={{ path: AppRoute.TEAM, label: "Team" }}
-          maxWidth="3xl"
         >
           <div className="flex flex-col gap-6">
             <StaffForm key={member.updatedAt} endpoint={updateStaffEndpoint} oldData={member} />

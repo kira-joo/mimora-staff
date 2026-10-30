@@ -14,7 +14,7 @@ export function PromotionEditView({ id }: { id: string }) {
   return (
     <QueryState query={query} entityName="promotion" backRoute={back}>
       {(promotion) => (
-        <PageShell title={<span dir="auto">{displayName(promotion.name) || promotion.code || "Promotion"}</span>} backRoute={back} maxWidth="3xl">
+        <PageShell title={<span dir="auto">{displayName(promotion.name) || promotion.code || "Promotion"}</span>} backRoute={back}>
           <PromotionForm key={promotion.updatedAt} endpoint={updatePromotionEndpoint} oldData={promotion} />
         </PageShell>
       )}

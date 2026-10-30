@@ -38,7 +38,6 @@ export function ProductEditView({ id }: { id: string }) {
           }
           backRoute={back}
           actions={<ProductLifecycleActions product={product} onChanged={() => void query.refetch()} />}
-          maxWidth="4xl"
         >
           <div className="flex flex-col gap-6">
             <VariantsPanel product={product} onChanged={() => void query.refetch()} />

@@ -142,7 +142,7 @@ export function NotificationSettingsView() {
   return (
     <QueryState query={query} entityName="notification settings">
       {(settings) => (
-        <PageShell title="Notification settings" description="Who is told about what, and how." maxWidth="3xl">
+        <PageShell title="Notification settings" description="Who is told about what, and how.">
           {canUpdate ? null : <ReadOnlyNotice />}
           <p role="note" className="mb-4 flex items-start gap-2 border border-[var(--st-line)] bg-[var(--st-surface)] p-3 text-[var(--st-ink-muted)]">
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />

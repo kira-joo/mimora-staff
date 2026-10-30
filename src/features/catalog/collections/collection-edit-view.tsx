@@ -12,7 +12,7 @@ export function CollectionEditView({ id }: { id: string }) {
   return (
     <QueryState query={query} entityName="collection" backRoute={{ path: AppRoute.COLLECTIONS, label: "Collections" }}>
       {(collection) => (
-        <PageShell title={<span dir="auto">{displayName(collection.name)}</span>} backRoute={{ path: AppRoute.COLLECTIONS, label: "Collections" }} maxWidth="3xl">
+        <PageShell title={<span dir="auto">{displayName(collection.name)}</span>} backRoute={{ path: AppRoute.COLLECTIONS, label: "Collections" }}>
           <CollectionForm key={collection.updatedAt} endpoint={updateCollectionEndpoint} oldData={collection} />
         </PageShell>
       )}

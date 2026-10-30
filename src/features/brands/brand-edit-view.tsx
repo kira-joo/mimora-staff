@@ -12,7 +12,7 @@ export function BrandEditView({ id }: { id: string }) {
   return (
     <QueryState query={query} entityName="brand" backRoute={{ path: AppRoute.BRANDS, label: "Brands" }}>
       {(brand) => (
-        <PageShell title={<span dir="auto">{brand.name.en || brand.name.ar}</span>} backRoute={{ path: AppRoute.BRANDS, label: "Brands" }} maxWidth="3xl">
+        <PageShell title={<span dir="auto">{brand.name.en || brand.name.ar}</span>} backRoute={{ path: AppRoute.BRANDS, label: "Brands" }}>
           <BrandForm key={brand.updatedAt} endpoint={updateBrandEndpoint} oldData={brand} />
         </PageShell>
       )}

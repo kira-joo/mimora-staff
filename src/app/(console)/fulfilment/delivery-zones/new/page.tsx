@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New delivery zone" };
 export default function NewDeliveryZonePage() {
   return (
     <PermissionGuard permission={AppPermission.DELIVERY_ZONE.CREATE} fallback={<NoAccess />}>
-      <PageShell title="New delivery zone" backRoute={{ path: AppRoute.DELIVERY_ZONES, label: "Delivery zones" }} maxWidth="3xl">
+      <PageShell title="New delivery zone" backRoute={{ path: AppRoute.DELIVERY_ZONES, label: "Delivery zones" }}>
         <DeliveryZoneForm endpoint={createDeliveryZoneEndpoint} />
       </PageShell>
     </PermissionGuard>

@@ -13,7 +13,7 @@ export function CategoryEditView({ id }: { id: string }) {
   return (
     <QueryState query={query} entityName="category" backRoute={{ path: AppRoute.CATEGORIES, label: "Categories" }}>
       {(category) => (
-        <PageShell title={<span dir="auto">{displayName(category.name)}</span>} backRoute={{ path: AppRoute.CATEGORIES, label: "Categories" }} maxWidth="3xl">
+        <PageShell title={<span dir="auto">{displayName(category.name)}</span>} backRoute={{ path: AppRoute.CATEGORIES, label: "Categories" }}>
           <div className="flex flex-col gap-6">
             <SubcategoriesPanel category={category} />
             <CategoryForm key={category.updatedAt} endpoint={updateCategoryEndpoint} oldData={category} />

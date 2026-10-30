@@ -275,7 +275,7 @@ export function ThemeView() {
   return (
     <QueryState query={query} entityName="theme">
       {(profile) => (
-        <PageShell title="Theme" description="The storefront's colours, shape and ground." maxWidth="3xl">
+        <PageShell title="Theme" description="The storefront's colours, shape and ground.">
           {canUpdate ? null : <ReadOnlyNotice />}
           <ThemeForm key={profile.updatedAt} profile={profile} canUpdate={canUpdate} />
         </PageShell>

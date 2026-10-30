@@ -12,7 +12,7 @@ export function SizeGuideEditView({ id }: { id: string }) {
   return (
     <QueryState query={query} entityName="size guide" backRoute={{ path: AppRoute.SIZE_GUIDES, label: "Size guides" }}>
       {(guide) => (
-        <PageShell title={<span dir="auto">{displayName(guide.name)}</span>} backRoute={{ path: AppRoute.SIZE_GUIDES, label: "Size guides" }} maxWidth="4xl">
+        <PageShell title={<span dir="auto">{displayName(guide.name)}</span>} backRoute={{ path: AppRoute.SIZE_GUIDES, label: "Size guides" }}>
           <SizeGuideForm key={guide.updatedAt} endpoint={updateSizeGuideEndpoint} oldData={guide} />
         </PageShell>
       )}

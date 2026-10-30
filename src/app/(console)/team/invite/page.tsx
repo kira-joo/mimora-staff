@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Invite member" };
 export default function InviteStaffPage() {
   return (
     <PermissionGuard permission={CustomPermission.STAFF_MANAGE} fallback={<NoAccess />}>
-      <PageShell title="Invite member" backRoute={{ path: AppRoute.TEAM, label: "Team" }} maxWidth="3xl">
+      <PageShell title="Invite member" backRoute={{ path: AppRoute.TEAM, label: "Team" }}>
         <StaffForm endpoint={inviteStaffEndpoint} />
       </PageShell>
     </PermissionGuard>

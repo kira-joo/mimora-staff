@@ -14,7 +14,6 @@ export function DeliveryZoneEditView({ id }: { id: string }) {
         <PageShell
           title={<span dir="auto">{zone.name.en || zone.name.ar || "Untitled zone"}</span>}
           backRoute={{ path: AppRoute.DELIVERY_ZONES, label: "Delivery zones" }}
-          maxWidth="3xl"
         >
           <DeliveryZoneForm key={zone.updatedAt} endpoint={updateDeliveryZoneEndpoint} oldData={zone} />
         </PageShell>

@@ -11,7 +11,7 @@ export function FulfilmentSettingsView() {
   return (
     <QueryState query={query} entityName="fulfilment settings">
       {(settings) => (
-        <PageShell title="Fulfilment settings" description="Delivery and pickup switches, dispatch timing, shipping fees, tax and return windows." maxWidth="3xl">
+        <PageShell title="Fulfilment settings" description="Delivery and pickup switches, dispatch timing, shipping fees, tax and return windows.">
           <FulfilmentSettingsForm key={settings.updatedAt} settings={settings} />
           <CarriersEditor key={`carriers-${settings.updatedAt}`} initial={settings.carriers ?? []} />
         </PageShell>

@@ -255,7 +255,7 @@ export function StoreProfileView() {
   return (
     <QueryState query={query} entityName="store profile">
       {(profile) => (
-        <PageShell title="Store profile" description="Who the store is and how customers reach it." maxWidth="3xl">
+        <PageShell title="Store profile" description="Who the store is and how customers reach it.">
           {canUpdate ? null : <ReadOnlyNotice />}
           <StoreProfileForm key={profile.updatedAt} profile={profile} canUpdate={canUpdate} />
         </PageShell>

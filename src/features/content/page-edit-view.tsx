@@ -19,7 +19,6 @@ export function PageEditView({ id }: { id: string }) {
           title={<span dir="auto">{displayName(page.title) || page.slug}</span>}
           description={`Version ${page.version ?? 1} · ${page.published ? "Published" : "Unpublished"}`}
           backRoute={back}
-          maxWidth="3xl"
         >
           <PageForm key={page.updatedAt} endpoint={updatePageEndpoint} oldData={page} />
           <PageHistory key={page.version} pageId={page._id} />

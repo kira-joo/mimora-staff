@@ -14,7 +14,6 @@ export function PickupLocationEditView({ id }: { id: string }) {
         <PageShell
           title={<span dir="auto">{location.name.en || location.name.ar || "Untitled location"}</span>}
           backRoute={{ path: AppRoute.PICKUP_LOCATIONS, label: "Pickup locations" }}
-          maxWidth="3xl"
         >
           <PickupLocationForm key={location.updatedAt} endpoint={updatePickupLocationEndpoint} oldData={location} />
         </PageShell>
