@@ -1,6 +1,7 @@
 import { createGetRoute, createPutRoute, createDeleteRoute } from "../../../../../server/core/route-factories";
 import { MongoIdParamsDto } from "../../../../../server/catalog/dto/mongo-id-params.dto";
 import { UpdateCategoryDto } from "../../../../../server/admin/dto/update-category.dto";
+import { deleteCategory } from "../../../../../server/admin/categories/delete-category";
 import { updateCategory } from "../../../../../server/admin/categories/update-category";
 import { categoryRepository } from "../../../../../server/core/repositories";
 import { AppPermission } from "../../../../../common/authorization/authorization-registry";
@@ -40,8 +41,6 @@ export const DELETE = createDeleteRoute({
   auth: { permissions: [AppPermission.CATEGORY.DELETE] },
   params: MongoIdParamsDto,
   revalidateTags: ["CATEGORIES"],
-  handler: async ({ params }) => {
-    await categoryRepository.updateAtomic({ _id: params.id }, { $set: { published: false } });
-    return;
-  },
+  // Refused (409) while anything depends on the category — see deleteCategory. Unpublishing is `PUT { published: false }`.
+  handler: async ({ params }) => deleteCategory(params.id),
 });

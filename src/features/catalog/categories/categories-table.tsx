@@ -4,10 +4,10 @@ import { requester, useRequesterQuery } from "@kira-joo/frontend-toolkit-core";
 import { CustomButton, RouteButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
 import { FeatureTable, type FeatureTableHandle } from "@kira-joo/frontend-toolkit-tailwind/table";
-import { ArrowUpDown, EyeOff, Pencil, Plus } from "lucide-react";
+import { ArrowUpDown, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef } from "react";
-import { listCategoriesEndpoint, unpublishCategoryEndpoint, type Category } from "src/api/categories.endpoints";
+import { deleteCategoryEndpoint, listCategoriesEndpoint, updateCategoryEndpoint, type Category } from "src/api/categories.endpoints";
 import { AppPermission } from "src/common/authorization/authorization-registry";
 import { runAction } from "src/common/feedback/run-action";
 import { AppRoute } from "src/common/routes/app-route";
@@ -28,6 +28,11 @@ export function CategoriesTable() {
   // Every category, for parent names and the reorder groups; 100 is the API's page maximum.
   const all = useRequesterQuery({ endpoint: listCategoriesEndpoint, options: { query: { limit: 100 } } });
   const byId = useMemo(() => new Map((all.data?.data ?? []).map((category) => [category._id, category])), [all.data]);
+
+  function refresh() {
+    void all.refetch();
+    table.current?.refetch();
+  }
 
   async function reorder() {
     const saved = await reorderCategoryLevel(
@@ -68,20 +73,39 @@ export function CategoriesTable() {
       rowActions={[
         { label: "Edit", icon: Pencil, hidden: () => !can(AppPermission.CATEGORY.UPDATE), onClick: (row) => router.push(AppRoute.CATEGORY(row._id)) },
         {
+          label: "Publish",
+          icon: Eye,
+          hidden: (row) => row.published || !can(AppPermission.CATEGORY.UPDATE),
+          onClick: async (row) => {
+            if (await runAction(() => requester(updateCategoryEndpoint, { params: { id: row._id }, body: { published: true } }), `${displayName(row.name)} published`)) refresh();
+          },
+        },
+        {
           label: "Unpublish",
           icon: EyeOff,
-          destructive: true,
-          hidden: (row) => !row.published || !can(AppPermission.CATEGORY.DELETE),
+          hidden: (row) => !row.published || !can(AppPermission.CATEGORY.UPDATE),
           confirm: (row) => ({
             title: `Unpublish ${displayName(row.name)}?`,
-            description: "It leaves the storefront menu. Its products and sub-categories stay, and you can publish it again from its page.",
+            description: "It leaves the storefront menu, and so do its sub-categories. Its products and sub-categories stay, and you can publish it again at any time.",
             confirmLabel: "Unpublish",
+          }),
+          onClick: async (row) => {
+            if (await runAction(() => requester(updateCategoryEndpoint, { params: { id: row._id }, body: { published: false } }), `${displayName(row.name)} unpublished`)) refresh();
+          },
+        },
+        {
+          label: "Delete",
+          icon: Trash2,
+          destructive: true,
+          hidden: () => !can(AppPermission.CATEGORY.DELETE),
+          confirm: (row) => ({
+            title: `Delete ${displayName(row.name)}?`,
+            description: "This can't be undone. A category that still has sub-categories or products, or that a promotion or the storefront content uses, can't be deleted — you'll be told what to move first. Nothing is reassigned automatically.",
+            confirmLabel: "Delete",
             destructive: true,
           }),
           onClick: async (row) => {
-            if (await runAction(() => requester(unpublishCategoryEndpoint, { params: { id: row._id } }), `${displayName(row.name)} unpublished`)) {
-              table.current?.refetch();
-            }
+            if (await runAction(() => requester(deleteCategoryEndpoint, { params: { id: row._id } }), `${displayName(row.name)} deleted`)) refresh();
           },
         },
       ]}

@@ -6,13 +6,13 @@ import { CustomForm, FieldType, type FormSection } from "@kira-joo/frontend-tool
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { listBrandsEndpoint, type LocalizedText } from "src/api/brands.endpoints";
-import { listCategoriesEndpoint } from "src/api/categories.endpoints";
 import { listCollectionsEndpoint } from "src/api/collections.endpoints";
 import type { createProductEndpoint, updateProductEndpoint, OptionAxis, Product, ProductAttribute, ProductInput } from "src/api/products.endpoints";
 import { listSizeGuidesEndpoint } from "src/api/size-guides.endpoints";
 import { AppRoute } from "src/common/routes/app-route";
 import { displayName } from "../catalog-display";
 import { NONE, useCatalogOptions } from "../use-catalog-options";
+import { useCategoryOptions } from "../categories/use-category-options";
 import { AttributesEditor } from "./attributes-editor";
 import { OptionAxesEditor } from "./option-axes-editor";
 import { attributesProblem, axesProblem, cleanAttributes, cleanAxes } from "./product-options";
@@ -149,7 +149,7 @@ export function ProductForm({ endpoint, oldData, variantCount = 0 }: ProductForm
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = Boolean(oldData);
-  const categories = useCatalogOptions(listCategoriesEndpoint);
+  const categories = useCategoryOptions();
   const brands = useCatalogOptions(listBrandsEndpoint, { none: "No brand" });
   const sizeGuides = useCatalogOptions(listSizeGuidesEndpoint, { none: "No size guide" });
   const form = useForm<ProductFormValues>({ defaultValues: mapProductToFormValues(oldData) });

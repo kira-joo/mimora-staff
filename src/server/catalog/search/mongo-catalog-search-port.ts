@@ -60,7 +60,10 @@ export const mongoCatalogSearchPort: CatalogSearchPort = {
         { $group: { _id: "$categoryId", count: { $sum: 1 } } },
       ]),
       ProductModel.aggregate<{ _id: string; count: number }>([
-        { $match: { ...base, brandId: { $exists: true } } },
+        // A brand is optional, and "no brand" is stored both ways: the field absent (a create without one) and `null`
+        // (an edit choosing "No brand"). `$ne: null` matches neither, so only real brand ids are counted — `$exists`
+        // let a stored null through as a `null` group, and `.toString()` on it failed every facet in that scope.
+        { $match: { ...base, brandId: { $ne: null } } },
         { $group: { _id: "$brandId", count: { $sum: 1 } } },
       ]),
       ProductModel.aggregate<{ min?: mongoose.Types.Decimal128; max?: mongoose.Types.Decimal128 }>([

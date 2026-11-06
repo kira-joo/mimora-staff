@@ -58,3 +58,27 @@ describe("getFacets — counted keys carry the merchant's localized names", () =
     expect((await getFacets()).attributes).toEqual([]);
   });
 });
+
+describe("getFacets — brand is optional", () => {
+  it("counts only real brands: a product with no brand field and one whose brand was cleared to null are both left out, and nothing fails", async () => {
+    const category = await CategoryModel.create({ slug: "c", published: true });
+    const brandId = new mongoose.Types.ObjectId();
+    await ProductModel.create({ slug: "branded", categoryId: category._id, lifecycle: "published", name: { en: "A", ar: "أ" }, brandId });
+    await ProductModel.create({ slug: "absent", categoryId: category._id, lifecycle: "published", name: { en: "B", ar: "ب" } });
+    // "No brand" chosen when editing in Staff is stored as an explicit null — the shape that used to break every facet in scope.
+    const cleared = await ProductModel.create({ slug: "cleared", categoryId: category._id, lifecycle: "published", name: { en: "C", ar: "ج" } });
+    await ProductModel.collection.updateOne({ _id: cleared._id }, { $set: { brandId: null } });
+    expect(await ProductModel.collection.countDocuments({ brandId: { $type: "null" } })).toBe(1);
+
+    const facets = await getFacets({ categoryId: category._id.toString() });
+    expect(facets.brands).toEqual([{ key: brandId.toString(), count: 1 }]);
+    expect(facets.categories).toEqual([{ key: category._id.toString(), count: 3 }]);
+  });
+
+  it("has no brand facet when no product has a brand — the shape of a store without brands", async () => {
+    const category = await CategoryModel.create({ slug: "c", published: true });
+    const product = await ProductModel.create({ slug: "a", categoryId: category._id, lifecycle: "published", name: { en: "A", ar: "أ" } });
+    await ProductModel.collection.updateOne({ _id: product._id }, { $set: { brandId: null } });
+    expect((await getFacets()).brands).toEqual([]);
+  });
+});

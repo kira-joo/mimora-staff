@@ -5,13 +5,14 @@ import { toast } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { CustomForm, FieldType, type FormSection } from "@kira-joo/frontend-toolkit-tailwind/forms";
 import type { ImageAsset } from "@kira-joo/toolkit-common";
 import { useRouter } from "next/navigation";
-import { listCategoriesEndpoint, type Category, type CategoryInput, type createCategoryEndpoint, type updateCategoryEndpoint } from "src/api/categories.endpoints";
+import { type Category, type CategoryInput, type createCategoryEndpoint, type updateCategoryEndpoint } from "src/api/categories.endpoints";
 import { AppRoute } from "src/common/routes/app-route";
 import { uploadCategoryImageEndpoint } from "src/api/media.endpoints";
 import { ImageUploadField } from "src/features/media/image-upload-field";
 import { catalogMediaSpec } from "src/server/admin/media/media-targets";
 import { displayName } from "../catalog-display";
-import { NONE, useCatalogOptions } from "../use-catalog-options";
+import { NONE } from "../use-catalog-options";
+import { useCategoryOptions } from "./use-category-options";
 
 type CategoryFormValues = Omit<CategoryInput, "parentId"> & { parentId: string };
 
@@ -106,8 +107,8 @@ export function CategoryForm({ endpoint, oldData }: CategoryFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = Boolean(oldData);
-  // A category can't be its own parent; the API refuses deeper cycles itself.
-  const parents = useCatalogOptions(listCategoriesEndpoint, { exclude: oldData?._id, none: "None — top level" });
+  // Neither itself nor anything beneath it is offered as a parent — the API would refuse the cycle anyway.
+  const parents = useCategoryOptions({ excludeSubtreeOf: oldData?._id, none: "None — top level" });
 
   const toBody = ({ parentId, image, ...rest }: CategoryFormValues): CategoryInput => ({
     ...rest,

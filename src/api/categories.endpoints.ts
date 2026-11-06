@@ -63,8 +63,12 @@ export const updateCategoryEndpoint: Endpoint<{ params: { id: string }; body: Pa
   methodType: MethodType.PUT,
 };
 
-/** The API's DELETE unpublishes — the category and its products stay. */
-export const unpublishCategoryEndpoint: Endpoint<{ params: { id: string }; returnType: void }> = {
+/**
+ * Deletes a category nothing depends on. The API refuses (409, naming every reason) while it has sub-categories or
+ * products, or a promotion or the storefront content points at it — nothing is ever moved. Unpublishing is
+ * `updateCategoryEndpoint` with `{ published: false }`.
+ */
+export const deleteCategoryEndpoint: Endpoint<{ params: { id: string }; returnType: void }> = {
   url: `${CATEGORIES}/:id`,
   methodType: MethodType.DELETE,
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Category } from "src/api/categories.endpoints";
-import { reorderItems, siblingsOf } from "./category-tree";
+import { categoryOptions, reorderItems, siblingsOf } from "./category-tree";
 
 const text = (en: string) => ({ en, ar: "" });
 const category = (id: string, sortOrder: number, parentId?: string | null, name = id): Category => ({
@@ -46,5 +46,35 @@ describe("reorderItems", () => {
       { categoryId: "a", sortOrder: 1 },
       { categoryId: "b", sortOrder: 2 },
     ]);
+  });
+});
+
+describe("categoryOptions", () => {
+  const all = [
+    category("accessories", 1, null, "Accessories"),
+    category("winter", 2, "accessories", "Winter Accessories"),
+    category("jewelry", 0, "accessories", "Jewelry"),
+    category("rings", 0, "jewelry", "Rings"),
+    category("mugs", 0, null, "Mugs & Cups"),
+  ];
+
+  it("lists the tree depth-first in storefront order, each labelled with its full path", () => {
+    expect(categoryOptions(all)).toEqual([
+      { value: "mugs", label: "Mugs & Cups" },
+      { value: "accessories", label: "Accessories" },
+      { value: "jewelry", label: "Accessories › Jewelry" },
+      { value: "rings", label: "Accessories › Jewelry › Rings" },
+      { value: "winter", label: "Accessories › Winter Accessories" },
+    ]);
+  });
+
+  it("leaves out a category and its whole subtree — the parents it may not move under", () => {
+    expect(categoryOptions(all, { excludeSubtreeOf: "jewelry" }).map((option) => option.value)).toEqual(["mugs", "accessories", "winter"]);
+  });
+
+  it("marks unpublished categories, and keeps one whose parent is not in the list", () => {
+    const hidden = { ...category("socks", 3, null, "Socks"), published: false };
+    const stray = category("stray", 0, "gone", "Stray");
+    expect(categoryOptions([hidden, stray]).map((option) => option.label)).toEqual(["Socks (unpublished)", "Stray"]);
   });
 });

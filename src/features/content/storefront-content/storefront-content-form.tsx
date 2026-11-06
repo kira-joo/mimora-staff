@@ -32,7 +32,7 @@ function buildSections(options: LinkOptions, readOnly: boolean): FormSection<For
     },
     {
       title: "Header navigation",
-      description: `Up to ${L.headerNavigation} links across the top of every page.`,
+      description: `The storefront menu lists your published categories automatically, in their Catalog → Categories order, with sub-categories as dropdowns. Add collections or pages here (up to ${L.headerNavigation}) to show them after the categories; category links here are not repeated in the menu.`,
       columns: 1,
       fields: [
         {
