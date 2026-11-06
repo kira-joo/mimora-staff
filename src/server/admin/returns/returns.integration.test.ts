@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { toMoney } from "@kira-joo/toolkit-common";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { orderRepository, productRepository, returnRepository } from "../../core/repositories";
+import { orderRepository, returnRepository } from "../../core/repositories";
 import { connectToDatabase } from "../../core/db/connect";
 import { CategoryModel } from "../../catalog/category.schema";
 import { ProductModel } from "../../catalog/product.schema";

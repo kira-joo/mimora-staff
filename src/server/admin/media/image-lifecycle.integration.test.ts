@@ -202,7 +202,7 @@ describe("single-write image updates roll back whole, and destroy nothing when t
       Model: StoreProfileModel,
       repository: storeProfileRepository,
       seed: () => StoreProfileModel.create({ currency: "EGP", contact: { phone: "+201000000000", email: "hello@example.com" }, logo: image("store/brand/keep") }),
-      update: (_id: string) => updateStoreProfile({ logo: null, tagline: { ar: "جديد", en: "New" } } as unknown as UpdateStoreProfileDto),
+      update: () => updateStoreProfile({ logo: null, tagline: { ar: "جديد", en: "New" } } as unknown as UpdateStoreProfileDto),
     },
   ] as const;
 

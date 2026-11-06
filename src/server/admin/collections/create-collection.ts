@@ -9,6 +9,7 @@ export interface CreateCollectionInput {
   slug: string;
   sortOrder?: number;
   image?: ImageAsset;
+  icon?: ImageAsset;
   seoTitle: LocalizedString;
   seoDescription: LocalizedString;
   published?: boolean;
@@ -26,6 +27,7 @@ export async function createCollection(input: CreateCollectionInput): Promise<Co
     slug: input.slug,
     sortOrder: input.sortOrder ?? 0,
     image: input.image,
+    icon: input.icon,
     seoTitle: input.seoTitle,
     seoDescription: input.seoDescription,
     published: input.published ?? false,

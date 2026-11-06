@@ -52,6 +52,7 @@ APIConfig.onUnauthorized = () => {
   clearAuthenticatedQueries(queryClient);
   if (typeof window === "undefined" || SIGNED_OUT_ROUTES.includes(window.location.pathname)) return;
   const here = `${window.location.pathname}${window.location.search}`;
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- deliberate hard navigation: this runs outside React (APIConfig callback, no router) and must discard in-memory state after the session ends.
   window.location.assign(`${AppRoute.LOGIN}?redirectTo=${encodeURIComponent(here)}`);
 };
 

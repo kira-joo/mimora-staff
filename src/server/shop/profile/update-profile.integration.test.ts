@@ -93,7 +93,7 @@ describe("updateProfile", () => {
   });
 
   it("throws ConflictError when email is taken by another customer", async () => {
-    const customer1 = await CustomerModel.create({
+    await CustomerModel.create({
       phone: "+201000000003",
       email: "taken@example.com",
       passwordHash: "hash",

@@ -35,9 +35,13 @@ afterAll(async () => {
 
 const get = async (handler: Handler, path: string) => {
   const response = await handler(new NextRequest(`http://localhost${path}`), { params: Promise.resolve({}) });
-  return { status: response.status, body: (await response.json()) as any };
+  return { status: response.status, body: await response.json() };
 };
-const slugs = (body: any) => body.data.map((p: any) => p.slug).sort();
+
+/** The slice of a storefront listing row these assertions read. */
+type ListingView = { lowStock: boolean; minActivePrice: string };
+type ListingRow = { slug: string; listing: ListingView };
+const slugs = (body: { data: Array<{ slug: string }> }) => body.data.map((p) => p.slug).sort();
 
 async function seed(slug: string, variants: Array<{ sku: string; size: string; stock: number }>) {
   const category = (await CategoryModel.findOne({ slug: "c" })) ?? (await CategoryModel.create({ slug: "c", published: true }));
@@ -82,10 +86,10 @@ describe("GET /api/storefront/search — parity with the listing", () => {
   it("projects lowStock as a boolean and never leaks the rollup's raw stock facts", async () => {
     await seedCatalog();
     const { body } = await get(searchRoute, "/api/storefront/search?q=Shirt");
-    const bySlug = Object.fromEntries(body.data.map((p: any) => [p.slug, p.listing]));
+    const bySlug: Record<string, ListingView> = Object.fromEntries(body.data.map((p: ListingRow) => [p.slug, p.listing]));
     expect(bySlug["has-s"].lowStock).toBe(true); // 2 <= the default threshold of 5
     expect(bySlug["has-m"].lowStock).toBe(true);
-    for (const listing of Object.values(bySlug) as any[]) {
+    for (const listing of Object.values(bySlug)) {
       expect(typeof listing.lowStock).toBe("boolean");
       expect(listing).not.toHaveProperty("lowStockOverride");
       expect(listing).not.toHaveProperty("minTrackedStock");
@@ -96,7 +100,7 @@ describe("GET /api/storefront/search — parity with the listing", () => {
     await seedCatalog();
     await InventorySettingsModel.create({ lowStockThreshold: 1 });
     const { body } = await get(searchRoute, "/api/storefront/search?q=Shirt&inStock=true");
-    expect(body.data.map((p: any) => p.listing.lowStock)).toEqual([false, false]);
+    expect(body.data.map((p: ListingRow) => p.listing.lowStock)).toEqual([false, false]);
   });
 
   it.each([

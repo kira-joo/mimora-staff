@@ -86,7 +86,7 @@ export function CategoriesTable() {
           hidden: (row) => !row.published || !can(AppPermission.CATEGORY.UPDATE),
           confirm: (row) => ({
             title: `Unpublish ${displayName(row.name)}?`,
-            description: "It leaves the storefront menu, and so do its sub-categories. Its products and sub-categories stay, and you can publish it again at any time.",
+            description: "It leaves the storefront menu. Its products and sub-categories stay, and you can publish it again at any time. A category with published sub-categories can't be unpublished — unpublish those first.",
             confirmLabel: "Unpublish",
           }),
           onClick: async (row) => {

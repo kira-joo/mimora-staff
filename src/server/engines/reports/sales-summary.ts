@@ -140,12 +140,19 @@ export function summarizeSales(input: {
     view(period, ordersByPeriod.get(period)?.orderCount ?? 0, ordersByPeriod.get(period)?.grossSales ?? ZERO, refundsByPeriod.get(period) ?? ZERO)
   );
 
-  const { period: _period, ...totals } = view(
+  const totalsRow = view(
     "",
     periods.reduce((total, period) => total + period.orderCount, 0),
     sum(periods.map((period) => period.grossSales)),
     sum(periods.map((period) => period.refunds))
   );
+  const totals: SalesSummary["totals"] = {
+    orderCount: totalsRow.orderCount,
+    grossSales: totalsRow.grossSales,
+    refunds: totalsRow.refunds,
+    revenue: totalsRow.revenue,
+    averageOrderValue: totalsRow.averageOrderValue,
+  };
 
   return { granularity: input.granularity, from: input.range.from, to: input.range.to, periods, totals };
 }

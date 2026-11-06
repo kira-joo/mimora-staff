@@ -5,6 +5,8 @@ import { productRepository, variantRepository } from "../../core/repositories";
 import { axisKeysChanged } from "../../catalog/option-axis-keys";
 import type { ProductSchema } from "../../catalog/product.schema";
 import { assertProductPublishable } from "../../catalog/product-publishable";
+import { CONTENDED_MAX_RETRIES, backOffBeforeRetry } from "../../core/transactions/contention-backoff";
+import { lockCategoryForAssignment } from "../categories/category-hierarchy";
 import { maintainProductListingRollup } from "../../catalog/rollups/maintain-product-listing";
 import { destroyImagesOnCommit, removedPublicIds } from "../media/image-cleanup";
 import { stripImagesFromVariantGalleries } from "../media/strip-variant-galleries";
@@ -43,6 +45,8 @@ export interface UpdateProductInput {
  */
 export async function updateProduct(productId: string, input: UpdateProductInput): Promise<ProductSchema> {
   return withTransaction(async (tx) => {
+    // The loser of a conflict must still be standing when the winner commits, or its retry budget burns in milliseconds.
+    await backOffBeforeRetry(tx.attempt);
     const product = await productRepository.findOne({ where: { _id: productId }, lean: true });
 
     if (input.optionAxes !== undefined && axisKeysChanged(product.optionAxes, input.optionAxes)) {
@@ -83,6 +87,9 @@ export async function updateProduct(productId: string, input: UpdateProductInput
     // D-11: a live product cannot be edited into one missing its default locale.
     if (product.lifecycle === "published") await assertProductPublishable({ ...product, ...patch });
 
+    // Moving a product into a category is a reference to it: same lock as `createProduct` (see `lockCategoryForAssignment`).
+    if (input.categoryId !== undefined && input.categoryId !== product.categoryId.toString()) await lockCategoryForAssignment(input.categoryId);
+
     let updated = await productRepository.update({ where: { _id: productId } }, patch);
 
     if (input.images !== undefined) {
@@ -100,5 +107,5 @@ export async function updateProduct(productId: string, input: UpdateProductInput
     }
 
     return tx.complete(updated);
-  });
+  }, { maxRetries: CONTENDED_MAX_RETRIES });
 }

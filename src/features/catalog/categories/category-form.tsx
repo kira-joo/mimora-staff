@@ -2,9 +2,11 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@kira-joo/frontend-toolkit-tailwind/primitives";
-import { CustomForm, FieldType, type FormSection } from "@kira-joo/frontend-toolkit-tailwind/forms";
+import { CustomForm, FieldType, renderFormField, type FormSection, type SelectFieldConfig } from "@kira-joo/frontend-toolkit-tailwind/forms";
 import type { ImageAsset } from "@kira-joo/toolkit-common";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 import { type Category, type CategoryInput, type createCategoryEndpoint, type updateCategoryEndpoint } from "src/api/categories.endpoints";
 import { AppRoute } from "src/common/routes/app-route";
 import { uploadCategoryImageEndpoint } from "src/api/media.endpoints";
@@ -12,13 +14,35 @@ import { ImageUploadField } from "src/features/media/image-upload-field";
 import { catalogMediaSpec } from "src/server/admin/media/media-targets";
 import { displayName } from "../catalog-display";
 import { NONE } from "../use-catalog-options";
+import { publishedForParent } from "./category-tree";
 import { useCategoryOptions } from "./use-category-options";
 
 type CategoryFormValues = Omit<CategoryInput, "parentId"> & { parentId: string };
 
 const EMPTY_TEXT = { ar: "", en: "" };
 
-function sections(parentOptions: { value: string; label: string }[]): FormSection<CategoryFormValues>[] {
+/**
+ * Keeps the publish switch a valid default whenever the parent picker changes (see `publishedForParent`). Renders
+ * nothing. Only reacts to a CHANGE of parent, or to the parents' states arriving after one was picked — never to the
+ * values a form opens with, so editing a category never flips its switch on load.
+ */
+function FollowParentVisibility({ form, mode, publishedById }: { form: UseFormReturn<CategoryFormValues>; mode: "create" | "edit"; publishedById: ReadonlyMap<string, boolean> }) {
+  const parentId = useWatch({ control: form.control, name: "parentId" });
+  const applied = useRef(parentId);
+  useEffect(() => {
+    if (applied.current === parentId) return;
+    const parentPublished = parentId === NONE ? null : publishedById.get(parentId);
+    if (parentPublished === undefined) return; // the list hasn't loaded; try again when it has
+    applied.current = parentId;
+    const published = form.getValues("published");
+    const next = publishedForParent({ mode, parentPublished, published });
+    if (next !== published) form.setValue("published", next, { shouldDirty: true });
+  }, [form, mode, parentId, publishedById]);
+  return null;
+}
+
+function sections(parentOptions: { value: string; label: string }[], mode: "create" | "edit", publishedById: ReadonlyMap<string, boolean>): FormSection<CategoryFormValues>[] {
+  const parentField: SelectFieldConfig<CategoryFormValues> = { type: FieldType.SELECT, name: "parentId", label: "Parent category", description: "Nest it under another category, or keep it at the top level.", options: parentOptions };
   return [
     {
       title: "Identity",
@@ -33,7 +57,17 @@ function sections(parentOptions: { value: string; label: string }[]): FormSectio
           description: "The category's address on the storefront. Must be unique.",
           rules: { required: true, maxLength: 200 },
         },
-        { type: FieldType.SELECT, name: "parentId", label: "Parent category", description: "Nest it under another category, or keep it at the top level.", options: parentOptions },
+        {
+          type: FieldType.CUSTOM,
+          name: "parentId",
+          // The toolkit's own select, plus the switch follower beside it.
+          render: ({ form }) => (
+            <>
+              {renderFormField(parentField, form)}
+              <FollowParentVisibility form={form} mode={mode} publishedById={publishedById} />
+            </>
+          ),
+        },
         { type: FieldType.LOCALIZED_TEXTAREA, name: "description", label: "Description", rows: 4 },
       ],
     },
@@ -74,7 +108,14 @@ function sections(parentOptions: { value: string; label: string }[]): FormSectio
     {
       title: "Visibility",
       columns: 1,
-      fields: [{ type: FieldType.SWITCH, name: "published", label: "Published on the storefront" }],
+      fields: [
+        {
+          type: FieldType.SWITCH,
+          name: "published",
+          label: "Published on the storefront",
+          description: "A sub-category can only be published while its parent category is published.",
+        },
+      ],
     },
   ];
 }
@@ -120,7 +161,7 @@ export function CategoryForm({ endpoint, oldData }: CategoryFormProps) {
   return (
     <CustomForm<CategoryFormValues, typeof endpoint>
       mode={isEdit ? "edit" : "create"}
-      sections={sections(parents.options)}
+      sections={sections(parents.options, isEdit ? "edit" : "create", parents.publishedById)}
       defaultValues={mapCategoryToFormValues(oldData)}
       submitEndpoint={endpoint}
       submitParams={oldData ? { id: oldData._id } : undefined}

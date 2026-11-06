@@ -4,6 +4,7 @@ import { ServiceUnavailableError } from "@kira-joo/backend-toolkit-core";
 import { fulfilmentSettingsRepository, orderLineRepository, orderRepository, paymentProofRepository, staffUserRepository } from "../../core/repositories";
 import { privateAssets } from "../../core/assets/asset-providers";
 import { PAYMENT_PROOF_SIGNED_URL_TTL_SECONDS } from "../../core/assets/upload-policies";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface OrderDetailOptions {
   /**
@@ -119,8 +120,8 @@ export async function getOrderDetailAdmin(orderId: string, options: OrderDetailO
     /** D-13 — absent on orders placed before acceptance was recorded. */
     termsVersionAccepted: order.termsVersionAccepted,
     acceptedAt: order.acceptedAt,
-    createdAt: (order as any).createdAt,
-    updatedAt: (order as any).updatedAt,
+    createdAt: (order as WithTimestamps<typeof order>).createdAt,
+    updatedAt: (order as WithTimestamps<typeof order>).updatedAt,
   };
 }
 

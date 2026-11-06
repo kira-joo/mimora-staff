@@ -99,9 +99,11 @@ const content = {
   ],
 };
 
-export default {
+const mimoraStore = {
   key: "mimora",
   store, theme, fulfilment, zones, pickups: [], payments,
   brands: [], categories, collections, sizeGuides: [],
   products, pages: [], promotions: [], content,
 };
+
+export default mimoraStore;

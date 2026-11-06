@@ -136,6 +136,6 @@ async function labelOptionFacets(counted: CatalogFacets["options"]): Promise<Sto
         return { key: value.key, label: readable(labels.get(id), value.key), count: value.count, position: positions.get(id) ?? Number.POSITIVE_INFINITY };
       })
       .sort((a, b) => a.position - b.position || a.key.localeCompare(b.key))
-      .map(({ position: _position, ...value }) => value),
+      .map((value) => ({ key: value.key, label: value.label, count: value.count })),
   }));
 }

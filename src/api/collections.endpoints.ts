@@ -10,6 +10,7 @@ export interface Collection {
   slug: string;
   sortOrder: number;
   image?: ImageAsset | null;
+  icon?: ImageAsset | null;
   seoTitle: LocalizedText;
   seoDescription: LocalizedText;
   published: boolean;
@@ -17,12 +18,13 @@ export interface Collection {
   updatedAt?: string;
 }
 
-/** `image` is an asset from the collection image upload. On update, `null` removes it; omitting it leaves it as it was. */
+/** `image` and `icon` are assets from the collection image upload. On update, `null` removes one; omitting it leaves it as it was. */
 export interface CollectionInput {
   name: LocalizedText;
   description: LocalizedText;
   slug: string;
   image?: ImageAsset | null;
+  icon?: ImageAsset | null;
   seoTitle: LocalizedText;
   seoDescription: LocalizedText;
   published: boolean;

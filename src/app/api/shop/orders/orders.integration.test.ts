@@ -35,6 +35,11 @@ process.env.STAFF_JWT_SECRET ??= "test-staff-secret-at-least-32-characters-long"
 
 const { GET, POST } = await import("./route");
 
+/** The one method the cleanup calls; the models here are a mixed list, so no single `Model<T>` fits them all. */
+interface DeleteManyModel {
+  deleteMany(filter: Record<string, never>): Promise<unknown>;
+}
+
 async function createCustomer() {
   return CustomerModel.create({
     phone: `+2010${Math.floor(Math.random() * 100000000)}`,
@@ -303,7 +308,7 @@ describe("POST /api/shop/orders - guest placement", () => {
   const CONTACT = { name: "  Sara  ", phone: " +201001112223 ", email: "sara@example.com" };
 
   beforeEach(async () => {
-    await Promise.all([CustomerModel, CartModel, CartLineModel, OrderModel, OrderLineModel, VariantModel, ProductModel, PickupLocationModel, FulfilmentSettingsModel, PaymentSettingsModel, OrderSequenceModel, PageModel, RateLimitModel].map((model) => (model as any).deleteMany({})));
+    await Promise.all([CustomerModel, CartModel, CartLineModel, OrderModel, OrderLineModel, VariantModel, ProductModel, PickupLocationModel, FulfilmentSettingsModel, PaymentSettingsModel, OrderSequenceModel, PageModel, RateLimitModel].map((model) => (model as unknown as DeleteManyModel).deleteMany({})));
     await PageModel.create({ slug: "terms", title: { en: "Terms", ar: "الشروط" }, content: { en: "Terms.", ar: "الشروط." }, published: true, version: 1 });
   });
 
@@ -360,7 +365,7 @@ describe("POST /api/shop/orders - guest placement", () => {
 
   it("snapshots the delivery zone in the order's language: Arabic for an Arabic order, English for an English one", async () => {
     for (const [language, expected] of [["ar", "القاهرة الكبرى"], ["en", "Greater Cairo"]] as const) {
-      await Promise.all([CartModel, CartLineModel, OrderModel, OrderLineModel, VariantModel, ProductModel, PickupLocationModel, FulfilmentSettingsModel, PaymentSettingsModel, DeliveryZoneModel].map((model) => (model as any).deleteMany({})));
+      await Promise.all([CartModel, CartLineModel, OrderModel, OrderLineModel, VariantModel, ProductModel, PickupLocationModel, FulfilmentSettingsModel, PaymentSettingsModel, DeliveryZoneModel].map((model) => (model as unknown as DeleteManyModel).deleteMany({})));
       const { cart } = await seedGuestCart({ shippingFeeMode: "BY_ZONE" });
       await DeliveryZoneModel.create({ name: { en: "Greater Cairo", ar: "القاهرة الكبرى" }, areas: ["Maadi"], fee: new Decimal("75"), leadDays: 1, active: true, order: 0 });
       // The storefront submits the zone's ENGLISH name as the matching key, whatever the page language.

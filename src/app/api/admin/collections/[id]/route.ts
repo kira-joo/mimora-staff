@@ -26,6 +26,7 @@ export const PUT = createPutRoute({
       slug: body.slug,
       sortOrder: body.sortOrder,
       image: body.image,
+      icon: body.icon,
       seoTitle: body.seoTitle,
       seoDescription: body.seoDescription,
       published: body.published,

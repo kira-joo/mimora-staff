@@ -42,7 +42,7 @@ describe("generateQuote", () => {
 
   describe("Happy Path", () => {
     it("generates quote for valid cart with single line - DELIVERY", async () => {
-      const fulfilmentSettings = await FulfilmentSettingsModel.create({
+      await FulfilmentSettingsModel.create({
         deliveryEnabled: true,
         pickupEnabled: false,
         defaultDispatchLeadDays: 2,
@@ -51,7 +51,7 @@ describe("generateQuote", () => {
         tax: { mode: "ADDED", rate: 14 },
       });
 
-      const deliveryZone = await DeliveryZoneModel.create({
+      await DeliveryZoneModel.create({
         name: { en: "Cairo", ar: "القاهرة" },
         areas: ["Cairo"],
         fee: toMoney(30),
@@ -293,7 +293,7 @@ describe("generateQuote", () => {
         tax: { mode: "ADDED", rate: 14 },
       });
 
-      const promotion = await PromotionModel.create({
+      await PromotionModel.create({
         code: "SAVE20",
         type: "PERCENT",
         value: toMoney("20"),

@@ -69,6 +69,8 @@ export function createCsvExportRoute<TQuery extends object>(options: {
 
 /** The query as plain filters for the audit entry — paging and sort keys are noise. */
 function filtersOf(query: unknown): Record<string, unknown> {
-  const { page: _page, limit: _limit, sortBy: _sortBy, sortOrder: _sortOrder, ...filters } = (query ?? {}) as Record<string, unknown>;
-  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== undefined));
+  const PAGING_KEYS = new Set(["page", "limit", "sortBy", "sortOrder"]);
+  return Object.fromEntries(
+    Object.entries((query ?? {}) as Record<string, unknown>).filter(([key, value]) => !PAGING_KEYS.has(key) && value !== undefined)
+  );
 }

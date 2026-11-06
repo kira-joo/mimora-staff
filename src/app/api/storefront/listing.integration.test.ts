@@ -26,7 +26,7 @@ afterAll(async () => {
 
 const get = async (handler: Handler, path: string) => {
   const response = await handler(new NextRequest(`http://localhost${path}`), { params: Promise.resolve({}) });
-  return { status: response.status, body: (await response.json()) as any };
+  return { status: response.status, body: await response.json() };
 };
 const attr = (key: string, valueKey: string) => ({ key, name: { en: key, ar: key }, values: [{ key: valueKey, value: { en: valueKey, ar: valueKey } }] });
 
@@ -56,14 +56,14 @@ describe("GET /api/storefront/products — listing capabilities contract", () =>
 
     expect(status).toBe(200);
     expect(Object.keys(body).sort()).toEqual(["data", "limit", "page", "total", "totalPages"]);
-    expect(body.data.map((p: any) => p.slug)).toEqual(["linen-cheap", "cotton-dear"]);
+    expect(body.data.map((p: { slug: string }) => p.slug)).toEqual(["linen-cheap", "cotton-dear"]);
     expect(body.data[0].listing.minActivePrice).toBe("10");
   });
 
   it("price_desc puts the unpriced product last; an unknown sort is a 400", async () => {
     await seed();
     const { body } = await get(productsRoute, "/api/storefront/products?sort=price_desc");
-    expect(body.data.map((p: any) => p.slug)).toEqual(["cotton-dear", "linen-cheap", "wool-none"]);
+    expect(body.data.map((p: { slug: string }) => p.slug)).toEqual(["cotton-dear", "linen-cheap", "wool-none"]);
 
     expect((await get(productsRoute, "/api/storefront/products?sort=cheapest")).status).toBe(400);
     expect((await get(productsRoute, "/api/storefront/products?attr=nocolon")).status).toBe(400);

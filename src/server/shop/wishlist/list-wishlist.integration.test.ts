@@ -121,7 +121,7 @@ describe("listWishlist", () => {
       lifecycle: "published",
     });
 
-    const item1 = await WishlistModel.create({
+    await WishlistModel.create({
       customerId: customer._id,
       productId: product1._id,
       customerProductKey: `${customer._id}|${product1._id}`,
@@ -129,7 +129,7 @@ describe("listWishlist", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const item2 = await WishlistModel.create({
+    await WishlistModel.create({
       customerId: customer._id,
       productId: product2._id,
       customerProductKey: `${customer._id}|${product2._id}`,

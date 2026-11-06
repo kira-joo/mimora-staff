@@ -199,6 +199,7 @@ export function PromotionForm({ endpoint, oldData }: PromotionFormProps) {
   const queryClient = useQueryClient();
   const isEdit = Boolean(oldData);
   const form = useForm<PromotionFormValues>({ defaultValues: mapPromotionToFormValues(oldData) });
+  // eslint-disable-next-line react-hooks/incompatible-library -- the section list below must re-render when `type` changes, which only watch() provides here; React Compiler is not enabled so skipped memoization costs nothing.
   const type = form.watch("type");
 
   return (

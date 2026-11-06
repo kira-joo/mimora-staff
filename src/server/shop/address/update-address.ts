@@ -2,6 +2,7 @@ import { NotFoundError } from "@kira-joo/backend-toolkit-core";
 import { AddressModel } from "../../core/address.schema";
 import { addressRepository } from "../../core/repositories";
 import type { AddressView } from "./list-addresses";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface UpdateAddressInput {
   label?: string;
@@ -60,7 +61,7 @@ export async function updateAddress(
     governorate: updated.governorate,
     postalCode: updated.postalCode,
     isDefault: updated.isDefault,
-    createdAt: (updated as any).createdAt,
-    updatedAt: (updated as any).updatedAt,
+    createdAt: (updated as WithTimestamps<typeof updated>).createdAt,
+    updatedAt: (updated as WithTimestamps<typeof updated>).updatedAt,
   };
 }

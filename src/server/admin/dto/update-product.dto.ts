@@ -8,7 +8,6 @@ import {
   ArrayMaxSize,
   IsArray,
   ValidateNested,
-  IsEnum,
   IsInt,
   Min,
   IsDateString,

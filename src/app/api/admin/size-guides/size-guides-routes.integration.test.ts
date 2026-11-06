@@ -43,7 +43,7 @@ afterAll(async () => {
 
 const json = async (response: Response) => {
   const text = await response.text();
-  return { status: response.status, body: (text ? JSON.parse(text) : undefined) as any };
+  return { status: response.status, body: text ? JSON.parse(text) : undefined };
 };
 const post = (chartData: unknown, caller = owner) => caller.call(create, PATH, { method: "POST", body: { name: LABEL, description: LABEL, chartData } }).then(json);
 const put = (id: string, body: unknown, caller = owner) => caller.call(update, `${PATH}/${id}`, { method: "PUT", params: { id }, body }).then(json);

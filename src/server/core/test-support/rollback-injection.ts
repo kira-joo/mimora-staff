@@ -32,6 +32,6 @@ export function restoreInjectedFailures(): void {
 }
 
 /** Every raw document of each model's collection, in `_id` order — what "exactly as before" is compared against. */
-export async function snapshotCollections(...models: Array<Model<any>>): Promise<unknown[][]> {
+export async function snapshotCollections(...models: Array<Pick<Model<object>, "collection">>): Promise<unknown[][]> {
   return Promise.all(models.map((model) => model.collection.find({}).sort({ _id: 1 }).toArray()));
 }

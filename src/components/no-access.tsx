@@ -12,7 +12,7 @@ export function NoAccess({ title = "You don't have access to this page" }: { tit
         <ShieldOff aria-hidden="true" className="size-5" />
       </span>
       <h1 className="mt-4 text-[20px] font-semibold text-[var(--st-ink)]">{title}</h1>
-      <p className="mt-1.5 text-[var(--st-ink-muted)]">Your role doesn't include it. If you need it for your work, ask an owner to update your role.</p>
+      <p className="mt-1.5 text-[var(--st-ink-muted)]">Your role doesn&apos;t include it. If you need it for your work, ask an owner to update your role.</p>
     </div>
   );
 }

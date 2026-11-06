@@ -8,7 +8,7 @@
 //                (Egypt's VAT), no pickup, two zones, four pages, a four-section home page in another order.
 // Plain data only. Images are file names (without .jpg) in the fixture image directory, resolved by the seeder; they are
 // downscaled copies and crops of the owner's own photos (see scripts/fixtures/README.md).
-import { L, OK, OUT, LOW, axis, plainAxis, cross, mk, single, spec } from "./_builders.mjs";
+import { L, OUT, LOW, axis, plainAxis, cross, mk, single, spec } from "./_builders.mjs";
 
 const store = {
   name: L("Sukkar & Qamar", "سُكّر وقمر"),

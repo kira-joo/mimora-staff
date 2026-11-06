@@ -3,7 +3,6 @@ import { SortOrder, moneyView, type Money } from "@kira-joo/toolkit-common";
 import { AppRoute } from "../../common/routes/app-route";
 import type { OrderTimelineEntry } from "../commerce/order.schema";
 import { customerRepository, notificationSettingsRepository, orderRepository, returnRepository } from "../core/repositories";
-import { loadMailContext } from "../core/mail/mail-context";
 import { sendTemplatedEmail } from "../core/mail/send-email";
 import { orderEmail, type OrderEmailInput } from "../core/mail/templates/order-emails";
 import { isEmailEnabledFor, orderEmailKindForEvent } from "../engines/notifications/order-email-policy";

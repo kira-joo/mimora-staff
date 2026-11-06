@@ -4,6 +4,7 @@ import { customerRepository } from "../../core/repositories";
 import { moveNewsletterSubscription } from "../../newsletter/subscribe";
 import type { ProfileView } from "./get-profile";
 import { toConsentView } from "./marketing-consent";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface UpdateProfileInput {
   name: string;
@@ -63,8 +64,8 @@ export async function updateProfile(customerId: string, input: UpdateProfileInpu
       phoneVerified: updated.phoneVerified,
       emailVerified: updated.emailVerified,
       marketingConsent: toConsentView(updated.marketingConsent),
-      createdAt: (updated as any).createdAt,
-      updatedAt: (updated as any).updatedAt,
+      createdAt: (updated as WithTimestamps<typeof updated>).createdAt,
+      updatedAt: (updated as WithTimestamps<typeof updated>).updatedAt,
     });
   });
 }

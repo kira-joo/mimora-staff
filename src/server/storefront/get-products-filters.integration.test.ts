@@ -30,8 +30,12 @@ afterAll(async () => {
 
 const get = async (handler: Handler, path: string) => {
   const response = await handler(new NextRequest(`http://localhost${path}`), { params: Promise.resolve({}) });
-  return { status: response.status, body: (await response.json()) as any };
+  return { status: response.status, body: await response.json() };
 };
+
+/** The slice of a storefront listing row these assertions read. */
+type ListingView = { lowStock: boolean; minActivePrice: string };
+type ListingRow = { slug: string; listing: ListingView };
 
 async function seed(slug: string, variants: Array<{ sku: string; size: string; stock: number; lowStockThreshold?: number; backorderPolicy?: "DENY" | "CONTINUE_SELLING" }>) {
   const category = (await CategoryModel.findOne({ slug: "c" })) ?? (await CategoryModel.create({ slug: "c", published: true }));
@@ -53,10 +57,10 @@ describe("GET /api/storefront/products — option, in-stock and low-stock contra
 
     const both = await get(productsRoute, "/api/storefront/products?opt=size:m&opt=size:s");
     expect(both.status).toBe(200);
-    expect(both.body.data.map((p: any) => p.slug).sort()).toEqual(["has-m", "has-s"]);
+    expect(both.body.data.map((p: { slug: string }) => p.slug).sort()).toEqual(["has-m", "has-s"]);
 
     const inStock = await get(productsRoute, "/api/storefront/products?inStock=true");
-    expect(inStock.body.data.map((p: any) => p.slug).sort()).toEqual(["has-m", "has-s"]);
+    expect(inStock.body.data.map((p: { slug: string }) => p.slug).sort()).toEqual(["has-m", "has-s"]);
     expect(inStock.body.total).toBe(2);
 
     const notFiltered = await get(productsRoute, "/api/storefront/products?inStock=false");
@@ -81,10 +85,10 @@ describe("GET /api/storefront/products — option, in-stock and low-stock contra
     await seed("plenty", [{ sku: "P", size: "m", stock: 50 }]);
 
     const { body } = await get(productsRoute, "/api/storefront/products");
-    const bySlug = Object.fromEntries(body.data.map((p: any) => [p.slug, p.listing]));
+    const bySlug: Record<string, ListingView> = Object.fromEntries(body.data.map((p: ListingRow) => [p.slug, p.listing]));
     expect(bySlug.few.lowStock).toBe(true); // 3 <= the default threshold of 5
     expect(bySlug.plenty.lowStock).toBe(false);
-    for (const listing of Object.values(bySlug) as any[]) {
+    for (const listing of Object.values(bySlug)) {
       expect(listing).not.toHaveProperty("lowStockOverride");
       expect(listing).not.toHaveProperty("minTrackedStock");
       expect(typeof listing.minActivePrice).toBe("string"); // money still serialises as before
@@ -106,7 +110,7 @@ describe("GET /api/storefront/products — option, in-stock and low-stock contra
     await seed("sold-out", [{ sku: "S", size: "m", stock: 0 }]);
 
     const { body } = await get(productsRoute, "/api/storefront/products");
-    const bySlug = Object.fromEntries(body.data.map((p: any) => [p.slug, p.listing.lowStock]));
+    const bySlug = Object.fromEntries(body.data.map((p: ListingRow) => [p.slug, p.listing.lowStock]));
     expect(bySlug).toEqual({ override: true, backorder: false, "sold-out": false });
   });
 });

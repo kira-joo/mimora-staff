@@ -28,7 +28,7 @@ export async function isImageReferenced(publicId: string): Promise<boolean> {
     ProductModel.exists({ "images.publicId": publicId }),
     VariantModel.exists({ "galleryOverride.publicId": publicId }),
     CategoryModel.exists({ "image.publicId": publicId }),
-    CollectionModel.exists({ "image.publicId": publicId }),
+    CollectionModel.exists({ $or: [{ "image.publicId": publicId }, { "icon.publicId": publicId }] }),
     StoreProfileModel.exists({ $or: ["logo", "favicon", "ogImage", "heroMedia", "defaultSeo.ogImage"].map((path) => ({ [`${path}.publicId`]: publicId })) }),
     PageModel.exists({ "seo.ogImage.publicId": publicId }),
   ]);

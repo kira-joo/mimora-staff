@@ -1,6 +1,7 @@
 import { DuplicateKeyError, NotFoundError } from "@kira-joo/backend-toolkit-core";
 import { buildWishlistKey } from "../../commerce/wishlist.schema";
 import { productRepository, wishlistRepository } from "../../core/repositories";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface AddToWishlistResult {
   _id: string;
@@ -36,7 +37,7 @@ export async function addToWishlist(customerId: string, productId: string): Prom
     return {
       _id: existing._id.toString(),
       productId: existing.productId.toString(),
-      addedAt: (existing as any).createdAt,
+      addedAt: (existing as WithTimestamps<typeof existing>).createdAt,
       alreadyExisted: true,
     };
   }
@@ -52,7 +53,7 @@ export async function addToWishlist(customerId: string, productId: string): Prom
     return {
       _id: item._id.toString(),
       productId: item.productId.toString(),
-      addedAt: (item as any).createdAt ?? new Date(),
+      addedAt: (item as WithTimestamps<typeof item>).createdAt ?? new Date(),
       alreadyExisted: false,
     };
   } catch (error) {
@@ -63,7 +64,7 @@ export async function addToWishlist(customerId: string, productId: string): Prom
         return {
           _id: existing._id.toString(),
           productId: existing.productId.toString(),
-          addedAt: (existing as any).createdAt,
+          addedAt: (existing as WithTimestamps<typeof existing>).createdAt,
           alreadyExisted: true,
         };
       }

@@ -33,12 +33,16 @@ describe("mailConfigStatus", () => {
   });
 
   it("allows an unauthenticated relay: no user and no password", () => {
-    const { SMTP_USER: _u, SMTP_PASS: _p, ...rest } = FULL;
+    const rest: Record<string, string> = { ...FULL };
+    delete rest.SMTP_USER;
+    delete rest.SMTP_PASS;
     expect(mailConfigStatus({ ...rest, SMTP_PORT: "1025" }).state).toBe("configured");
   });
 
   it("is half-configured when a required variable is missing, and names exactly those variables", () => {
-    const { SMTP_PASS: _p, MAIL_FROM: _f, ...rest } = FULL;
+    const rest: Record<string, string> = { ...FULL };
+    delete rest.SMTP_PASS;
+    delete rest.MAIL_FROM;
     const status = mailConfigStatus(rest);
     expect(status.state).toBe("half-configured");
     if (status.state !== "half-configured") return;

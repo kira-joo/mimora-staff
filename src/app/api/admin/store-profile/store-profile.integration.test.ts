@@ -46,7 +46,9 @@ const FULL = {
 let owner: AdminCaller;
 const put = (body: unknown, caller = owner) => caller.call(PUT, "/api/admin/store-profile", { method: "PUT", body });
 const get = async (caller = owner) => (await caller.call(GET, "/api/admin/store-profile")).json();
-const stored = () => StoreProfileModel.collection.findOne({}) as Promise<Record<string, any> | null>;
+/** The slice of the raw stored document these assertions read. */
+type StoredProfile = { name?: unknown; logo?: unknown; defaultSeo: { title?: unknown; description?: unknown; ogImage: { publicId: string } } };
+const stored = () => StoreProfileModel.collection.findOne({}) as unknown as Promise<StoredProfile | null>;
 
 beforeAll(async () => {
   await connectToDatabase();

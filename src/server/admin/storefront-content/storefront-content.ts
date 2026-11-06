@@ -1,9 +1,12 @@
 import { ConflictError, ValidationFailedError, type ValidationFieldError } from "@kira-joo/backend-toolkit-core";
+import { withTransaction } from "@kira-joo/backend-toolkit-mongoose";
 import mongoose from "mongoose";
 import { categoryRepository, collectionRepository, pageRepository, storefrontContentRepository } from "../../core/repositories";
 import { defaultLocaleProblems } from "../../content/default-locale";
 import { collectReferences, resolveStorefrontContent, type StorefrontContentView } from "../../content/resolve-storefront-content";
 import { EMPTY_STOREFRONT_CONTENT, type HomeSection, type LinkKind, type LinkTarget, type StorefrontContentBody } from "../../content/storefront-content.types";
+import { CONTENDED_MAX_RETRIES, backOffBeforeRetry } from "../../core/transactions/contention-backoff";
+import { touchCategoriesInOrder } from "../categories/category-hierarchy";
 import type { LinkTargetDto, SaveStorefrontContentDraftDto } from "../dto/storefront-content.dto";
 
 export interface StorefrontContentAdminView {
@@ -48,15 +51,40 @@ export async function getStorefrontContentAdmin(): Promise<StorefrontContentAdmi
 
 /**
  * Replaces the draft. Drafts may be incomplete — an untranslated headline,
- * a link to a collection not yet published — because that is what drafts
- * are for; only the structure is enforced here. Customers see nothing
- * until `publishStorefrontContent`.
+ * a link to a collection not yet published, a category not yet published —
+ * because that is what drafts are for; only the structure is enforced here,
+ * plus one thing a draft may never name: a category that does not exist.
+ * Customers see nothing until `publishStorefrontContent`.
+ *
+ * In a transaction that first writes every category the draft newly links
+ * to (`touchCategoriesInOrder`): a missing one is refused as a field-mapped
+ * 400 — the same shape publishing uses — and a present one can't be deleted
+ * before this commits, because `deleteCategory` writes the same document and
+ * so conflicts with this transaction. A category the stored draft already
+ * linked to needs no lock (it was locked when it was added, and the delete
+ * refuses while a draft names it).
  */
 export async function saveStorefrontContentDraft(input: SaveStorefrontContentDraftDto): Promise<StorefrontContentAdminView> {
   const draft = toBody(input);
   assertDraftShape(draft);
-  await storefrontContentRepository.updateAtomic({}, { $set: { draft }, $inc: { draftRevision: 1 } }, { upsert: true });
+  await withTransaction(async (tx) => {
+    // The loser of a conflict must still be standing when the winner commits, or its retry budget burns in milliseconds.
+    await backOffBeforeRetry(tx.attempt);
+    const stored = await readRecord();
+    const alreadyLinked = new Set(categoryReferences(stored?.draft ?? EMPTY_STOREFRONT_CONTENT).map((reference) => reference.id.toString()));
+    const added = categoryReferences(draft).filter((reference) => !alreadyLinked.has(reference.id.toString()));
+    const missing = new Set(await touchCategoriesInOrder(added.map((reference) => reference.id)));
+    if (missing.size > 0) {
+      throw new ValidationFailedError(added.filter((reference) => missing.has(reference.id.toString())).map((reference) => ({ field: reference.field, messages: ["This category doesn't exist."] })));
+    }
+    await storefrontContentRepository.updateAtomic({}, { $set: { draft }, $inc: { draftRevision: 1 } }, { upsert: true });
+    return tx.complete(undefined);
+  }, { maxRetries: CONTENDED_MAX_RETRIES });
   return getStorefrontContentAdmin();
+}
+
+function categoryReferences(body: StorefrontContentBody) {
+  return collectReferences(body).filter((reference) => reference.kind === "category");
 }
 
 export async function previewStorefrontContentDraft(now: Date): Promise<StorefrontContentPreview> {
@@ -73,22 +101,33 @@ export async function previewStorefrontContentDraft(now: Date): Promise<Storefro
  *   something missing or unpublished, or text missing its default locale
  *   (D-11).
  *
- * One document, one conditional write: the copy happens only if the
- * draft is still the previewed revision at the instant of writing.
+ * One transaction: it first writes every category the draft links to
+ * (`touchCategoriesInOrder`), so publishing can't commit beside a concurrent
+ * `deleteCategory` — or an unpublish — of one of them; whichever loses
+ * re-runs against the other's result (a missing category then shows up
+ * among the 400's problems below). The copy itself is still one conditional
+ * write: it happens only if the draft is still the previewed revision at the
+ * instant of writing.
  */
 export async function publishStorefrontContent(draftRevision: number, publishedBy: string, now: Date): Promise<StorefrontContentAdminView> {
-  const record = await readRecord();
-  if (!record || record.draftRevision !== draftRevision) throw staleDraft();
+  await withTransaction(async (tx) => {
+    // The loser of a conflict must still be standing when the winner commits, or its retry budget burns in milliseconds.
+    await backOffBeforeRetry(tx.attempt);
+    const record = await readRecord();
+    if (!record || record.draftRevision !== draftRevision) throw staleDraft();
 
-  const problems = await publishProblems(record.draft);
-  if (problems.length > 0) throw new ValidationFailedError(problems);
+    await touchCategoriesInOrder(categoryReferences(record.draft).map((reference) => reference.id));
+    const problems = await publishProblems(record.draft);
+    if (problems.length > 0) throw new ValidationFailedError(problems);
 
-  const written = await storefrontContentRepository.updateAtomic(
-    { draftRevision },
-    { $set: { published: record.draft, publishedRevision: draftRevision, publishedAt: now, publishedBy: new mongoose.Types.ObjectId(publishedBy) } },
-    { skipThrowError: true }
-  );
-  if (!written) throw staleDraft();
+    const written = await storefrontContentRepository.updateAtomic(
+      { draftRevision },
+      { $set: { published: record.draft, publishedRevision: draftRevision, publishedAt: now, publishedBy: new mongoose.Types.ObjectId(publishedBy) } },
+      { skipThrowError: true }
+    );
+    if (!written) throw staleDraft();
+    return tx.complete(undefined);
+  }, { maxRetries: CONTENDED_MAX_RETRIES });
   return getStorefrontContentAdmin();
 }
 
@@ -125,7 +164,10 @@ async function publishedIds(references: LinkTarget[]): Promise<Record<LinkKind, 
     const docs = kind === "category" ? await categoryRepository.findAll({ where, select: { _id: true }, lean: true }) : kind === "collection" ? await collectionRepository.findAll({ where, select: { _id: true }, lean: true }) : await pageRepository.findAll({ where, select: { _id: true }, lean: true });
     return new Set(docs.map((doc) => doc._id.toString()));
   };
-  const [category, collection, page] = await Promise.all([found("category"), found("collection"), found("page")]);
+  // Sequential, not Promise.all: publishing runs this inside a transaction, and one session cannot run concurrent operations.
+  const category = await found("category");
+  const collection = await found("collection");
+  const page = await found("page");
   return { category, collection, page };
 }
 

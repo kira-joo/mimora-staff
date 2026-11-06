@@ -17,5 +17,6 @@ export function useCategoryOptions(options: { excludeSubtreeOf?: string; none?: 
     const list = categoryOptions(query.data?.data ?? [], { excludeSubtreeOf });
     return none ? [{ value: NONE, label: none }, ...list] : list;
   }, [query.data, excludeSubtreeOf, none]);
-  return { options: items, loading: query.isLoading };
+  const publishedById = useMemo(() => new Map((query.data?.data ?? []).map((category) => [category._id, category.published])), [query.data]);
+  return { options: items, publishedById, loading: query.isLoading };
 }

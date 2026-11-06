@@ -110,7 +110,7 @@ function PreviewResult({ preview, draftSectionTypes }: { preview: StorefrontCont
             )}
             {omitted > 0 ? (
               <span className="mt-1 block text-[var(--st-ink-muted)]">
-                {omitted} {omitted === 1 ? "section is" : "sections are"} left out because what {omitted === 1 ? "it points" : "they point"} at isn't available to customers.
+                {omitted} {omitted === 1 ? "section is" : "sections are"} left out because what {omitted === 1 ? "it points" : "they point"} at isn&apos;t available to customers.
               </span>
             ) : null}
           </dd>

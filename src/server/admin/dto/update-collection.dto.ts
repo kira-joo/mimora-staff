@@ -33,6 +33,12 @@ export class UpdateCollectionDto {
 
   @IsOptional()
   @ValidateNested()
+  @Type(() => ImageAssetDto)
+  /** `null` removes the icon. */
+  icon?: ImageAssetDto | null;
+
+  @IsOptional()
+  @ValidateNested()
   @Type(() => LocalizedStringDto)
   seoTitle?: LocalizedStringDto;
 

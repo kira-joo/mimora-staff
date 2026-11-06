@@ -55,6 +55,32 @@ const SECTIONS: FormSection<CollectionInput>[] = [
     ],
   },
   {
+    title: "Icon",
+    description:
+      "A small picture shown in a circle beside the collection's name where shoppers pick an occasion (the home page's gift panel). A square PNG with a transparent background works best. Without one, the storefront shows a default icon.",
+    columns: 1,
+    fields: [
+      {
+        type: FieldType.CUSTOM,
+        name: "icon",
+        render: ({ field, error }) => (
+          <>
+            <ImageUploadField
+              label="Collection icon"
+              value={field.value as ImageAsset | null | undefined}
+              onChange={field.onChange}
+              uploadEndpoint={uploadCollectionImageEndpoint}
+              policy={catalogMediaSpec("collection").policy}
+              disabled={field.disabled}
+              previewClassName="size-20"
+            />
+            {error ? <p role="alert" className="text-[13px] font-medium text-[var(--st-status-danger)]">{error}</p> : null}
+          </>
+        ),
+      },
+    ],
+  },
+  {
     title: "Search engines",
     description: "The title and summary search results show.",
     columns: 1,
@@ -84,6 +110,7 @@ export function mapCollectionToFormValues(oldData?: Collection): CollectionInput
     slug: oldData?.slug ?? "",
     description: oldData?.description ?? EMPTY_TEXT,
     image: oldData?.image ?? null,
+    icon: oldData?.icon ?? null,
     seoTitle: oldData?.seoTitle ?? EMPTY_TEXT,
     seoDescription: oldData?.seoDescription ?? EMPTY_TEXT,
     published: oldData?.published ?? true,
@@ -103,8 +130,8 @@ export function CollectionForm({ endpoint, oldData }: CollectionFormProps) {
       defaultValues={mapCollectionToFormValues(oldData)}
       submitEndpoint={endpoint}
       submitParams={oldData ? { id: oldData._id } : undefined}
-      // `null` removes the stored image on an edit; on a create there is nothing to remove, so it is left out.
-      transformValues={({ image, ...rest }) => ({ ...rest, image: image ?? (isEdit ? null : undefined) })}
+      // `null` removes a stored image or icon on an edit; on a create there is nothing to remove, so it is left out.
+      transformValues={({ image, icon, ...rest }) => ({ ...rest, image: image ?? (isEdit ? null : undefined), icon: icon ?? (isEdit ? null : undefined) })}
       submitButtonText={isEdit ? "Save collection" : "Create collection"}
       warnOnUnsavedChanges
       onSuccess={(saved) => {

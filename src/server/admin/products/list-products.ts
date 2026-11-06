@@ -2,6 +2,7 @@ import { SortOrder } from "@kira-joo/toolkit-common";
 import type { LocalizedString, ImageAsset, Money, PaginatedResponse } from "@kira-joo/toolkit-common";
 import { productRepository } from "../../core/repositories";
 import type { ListAdminProductsQueryDto } from "../dto/list-admin-products-query.dto";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface ProductListView {
   _id: string;
@@ -55,8 +56,8 @@ export async function listProducts(query: ListAdminProductsQueryDto): Promise<Pa
       order: p.order,
       listing: p.listing,
       ratingsSummary: p.ratingsSummary,
-      createdAt: (p as any).createdAt,
-      updatedAt: (p as any).updatedAt,
+      createdAt: (p as WithTimestamps<typeof p>).createdAt,
+      updatedAt: (p as WithTimestamps<typeof p>).updatedAt,
     })),
   };
 }

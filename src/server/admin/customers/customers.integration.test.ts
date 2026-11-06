@@ -53,7 +53,7 @@ describe("Admin Customers", () => {
     it("never exposes passwordHash", async () => {
       await seedCustomer();
       const result = await listCustomers({ limit: 10, page: 1 });
-      expect((result.data[0] as any).passwordHash).toBeUndefined();
+      expect((result.data[0] as { passwordHash?: unknown }).passwordHash).toBeUndefined();
     });
   });
 
@@ -73,7 +73,7 @@ describe("Admin Customers", () => {
       const detail = await getCustomerDetailAdmin(customer._id.toString());
       expect(detail.customer.name).toBe("Alice");
       expect(detail.addresses).toHaveLength(1);
-      expect((detail.customer as any).passwordHash).toBeUndefined();
+      expect((detail.customer as { passwordHash?: unknown }).passwordHash).toBeUndefined();
     });
   });
 });

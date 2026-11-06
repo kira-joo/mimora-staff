@@ -1,6 +1,7 @@
 import { NotFoundError } from "@kira-joo/backend-toolkit-core";
 import { addressRepository } from "../../core/repositories";
 import type { AddressView } from "./list-addresses";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 /**
  * Fetches a single address by ID.
@@ -27,7 +28,7 @@ export async function getAddress(customerId: string, addressId: string): Promise
     governorate: address.governorate,
     postalCode: address.postalCode,
     isDefault: address.isDefault,
-    createdAt: (address as any).createdAt,
-    updatedAt: (address as any).updatedAt,
+    createdAt: (address as WithTimestamps<typeof address>).createdAt,
+    updatedAt: (address as WithTimestamps<typeof address>).updatedAt,
   };
 }

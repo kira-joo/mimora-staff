@@ -38,13 +38,22 @@ function parseCsv(text: string): string[][] {
   for (let i = 0; i < text.length; i += 1) {
     const ch = text[i]!;
     if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') (cell += '"', (i += 1));
-      else if (ch === '"') quoted = false;
+      if (ch === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') quoted = false;
       else cell += ch;
     } else if (ch === '"') quoted = true;
-    else if (ch === ",") (row.push(cell), (cell = ""));
-    else if (ch === "\r" && text[i + 1] === "\n") (row.push(cell), rows.push(row), (row = []), (cell = ""), (i += 1));
-    else cell += ch;
+    else if (ch === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\r" && text[i + 1] === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      i += 1;
+    } else cell += ch;
   }
   return rows;
 }

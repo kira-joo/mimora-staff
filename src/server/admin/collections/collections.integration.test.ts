@@ -6,12 +6,16 @@ import { listCollections } from "./list-collections";
 import { createCollection } from "./create-collection";
 import { updateCollection } from "./update-collection";
 import { reorderCollections } from "./reorder-collections";
+import { isImageReferenced } from "../media/image-cleanup";
 import { ConflictError, NotFoundError } from "@kira-joo/backend-toolkit-core";
+import { AssetProviderType } from "@kira-joo/toolkit-common";
 
 process.env.MONGODB_URI ??= "mongodb://localhost:27020/store-platform-staff-test?replicaSet=rs0&directConnection=true";
 process.env.MONGODB_DB ??= "store-platform-staff-test";
 
 const LOCALIZED = { ar: "نص", en: "Text" };
+const asset = (publicId: string) => ({ provider: AssetProviderType.CLOUDINARY, publicId, secureUrl: `https://example.com/${publicId}.png`, format: "png", width: 256, height: 256, bytes: 1 });
+const BASE = { name: LOCALIZED, description: LOCALIZED, seoTitle: LOCALIZED, seoDescription: LOCALIZED };
 
 describe("Admin Collections", () => {
   beforeAll(async () => {
@@ -99,6 +103,44 @@ describe("Admin Collections", () => {
     it("throws NotFoundError for a non-existent collection", async () => {
       const fakeId = new mongoose.Types.ObjectId().toString();
       await expect(updateCollection(fakeId, { sortOrder: 1 })).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("icon", () => {
+    it("is optional: a collection created without one has none, and one created with one keeps it beside its image", async () => {
+      const plain = await createCollection({ ...BASE, slug: "plain" });
+      expect(plain.icon).toBeUndefined();
+
+      const withIcon = await createCollection({ ...BASE, slug: "birthdays", image: asset("store/collections/photo"), icon: asset("store/collections/cake") });
+      const stored = await CollectionModel.findById(withIcon._id).lean();
+      expect(stored?.icon).toMatchObject({ publicId: "store/collections/cake", width: 256, height: 256 });
+      expect(stored?.image).toMatchObject({ publicId: "store/collections/photo" });
+    });
+
+    it("is set and replaced on update, and leaving it out of an update leaves it as it was", async () => {
+      const created = await createCollection({ ...BASE, slug: "for-her" });
+      await updateCollection(created._id.toString(), { icon: asset("store/collections/flower") });
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower");
+
+      await updateCollection(created._id.toString(), { name: { ar: "لها", en: "For her" } });
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower");
+
+      await updateCollection(created._id.toString(), { icon: asset("store/collections/flower-2") });
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower-2");
+    });
+
+    it("null removes the icon without touching the image", async () => {
+      const created = await createCollection({ ...BASE, slug: "bestie", image: asset("store/collections/photo-b"), icon: asset("store/collections/hands") });
+      await updateCollection(created._id.toString(), { icon: null });
+      const stored = await CollectionModel.findById(created._id).lean();
+      expect(stored).not.toHaveProperty("icon");
+      expect(stored?.image?.publicId).toBe("store/collections/photo-b");
+    });
+
+    it("counts as a reference, so an icon is never destroyed while a collection still shows it", async () => {
+      await createCollection({ ...BASE, slug: "yourself", icon: asset("store/collections/sparkles") });
+      expect(await isImageReferenced("store/collections/sparkles")).toBe(true);
+      expect(await isImageReferenced("store/collections/nobody")).toBe(false);
     });
   });
 
