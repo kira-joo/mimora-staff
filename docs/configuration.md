@@ -129,7 +129,7 @@ What is needed:
    5 minutes (`PAYMENT_PROOF_SIGNED_URL_TTL_SECONDS`). Do **not** switch the
    folder or account to public delivery — a receipt is a customer's bank data.
 3. Accepted files: JPEG, PNG, WebP, HEIC, up to 8 MB
-   (`PAYMENT_PROOF_UPLOAD_POLICY`). Stored under `payment-proofs/<orderNumber>/`.
+   (`PAYMENT_PROOF_UPLOAD_POLICY`). Stored under `mimora/payment-proofs/orders/<orderNumber>/`.
 
 **End-to-end verification once the credentials exist** — scripted, so it runs
 the same way every time (`mimora-client/scripts/qa/receipt-e2e.mjs`; no mock

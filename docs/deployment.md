@@ -70,7 +70,7 @@ record that shows them is saved, so an upload nobody saves is an orphan file in 
 contract here has no "list assets" call, so each public upload is recorded in a `PendingUpload` collection when it
 happens, and this job destroys the ones older than 24 hours that no product, variant, category, collection, store
 profile or page references (referenced ones are just forgotten, never destroyed). It uses the same guard and secret as
-the sweep below, only touches the `store/` namespace, and is idempotent. Uploads made before this shipped are not
+the sweep below, only touches the `mimora/store/` namespace, and is idempotent. Uploads made before this shipped are not
 tracked and are not swept.
 
 **The cron.** It runs the unpaid-order sweep: orders on a payment method that requires proof and has an

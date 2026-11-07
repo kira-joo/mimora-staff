@@ -31,7 +31,7 @@ const originalCronSecret = process.env.CRON_SECRET;
 
 const request = (method: "GET" | "POST", headers: Record<string, string> = {}) => new NextRequest("http://localhost/api/internal/jobs/sweep-orphan-images", { method, headers });
 const context = { params: Promise.resolve({}) };
-const seedOrphan = () => PendingUploadModel.collection.insertOne({ publicId: "store/products/orphan", createdAt: new Date(Date.now() - 48 * 3_600_000), updatedAt: new Date() });
+const seedOrphan = () => PendingUploadModel.collection.insertOne({ publicId: "mimora/store/products/orphan", createdAt: new Date(Date.now() - 48 * 3_600_000), updatedAt: new Date() });
 
 beforeAll(connectToDatabase);
 afterAll(async () => {
@@ -57,8 +57,8 @@ describe("/api/internal/jobs/sweep-orphan-images", () => {
     const response = await post(request("POST", { "x-jobs-secret": SECRET }), context);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ examined: 1, kept: 0, destroyed: ["store/products/orphan"], failed: [] });
-    expect(provider.destroyed).toEqual(["store/products/orphan"]);
+    expect(await response.json()).toEqual({ examined: 1, kept: 0, destroyed: ["mimora/store/products/orphan"], failed: [] });
+    expect(provider.destroyed).toEqual(["mimora/store/products/orphan"]);
   });
 
   it("Vercel Cron: GET with Authorization: Bearer $CRON_SECRET (and no JOBS_SECRET) sweeps too", async () => {
@@ -69,7 +69,7 @@ describe("/api/internal/jobs/sweep-orphan-images", () => {
     const response = await get(request("GET", { authorization: `Bearer ${SECRET}` }), context);
 
     expect(response.status).toBe(200);
-    expect(provider.destroyed).toEqual(["store/products/orphan"]);
+    expect(provider.destroyed).toEqual(["mimora/store/products/orphan"]);
   });
 
   it.each([

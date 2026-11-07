@@ -61,7 +61,7 @@ beforeEach(async () => {
     slug: "p",
     categoryId: category._id,
     optionAxes: [{ key: "colour", name: { ar: "اللون", en: "Colour" } }],
-    images: [image("store/products/a"), image("store/products/b")],
+    images: [image("mimora/store/products/a"), image("mimora/store/products/b")],
   });
   productId = product._id.toString();
   const variant = await VariantModel.create({
@@ -71,22 +71,22 @@ beforeEach(async () => {
     optionValues: [{ key: "colour", value: "red" }],
     price: toMoney("10.00"),
     stock: 3,
-    galleryOverride: [image("store/products/b")],
+    galleryOverride: [image("mimora/store/products/b")],
   });
   variantId = variant._id.toString();
 });
 
 describe("product images", () => {
   it("destroys a removed image once the write has committed, and keeps the others", async () => {
-    const updated = await updateProduct(productId, { images: [image("store/products/b")] });
-    expect(updated.images.map((i) => i.publicId)).toEqual(["store/products/b"]);
-    expect(provider.destroyed).toEqual(["store/products/a"]);
+    const updated = await updateProduct(productId, { images: [image("mimora/store/products/b")] });
+    expect(updated.images.map((i) => i.publicId)).toEqual(["mimora/store/products/b"]);
+    expect(provider.destroyed).toEqual(["mimora/store/products/a"]);
   });
 
   it("destroys nothing while the transaction is open, and nothing at all when it rolls back", async () => {
     await expect(
       withTransaction(async () => {
-        await updateProduct(productId, { images: [image("store/products/b")] });
+        await updateProduct(productId, { images: [image("mimora/store/products/b")] });
         // The write has happened inside the transaction, but has not committed: no destroy yet.
         expect(provider.destroyed).toEqual([]);
         throw new Error("a later step failed");
@@ -94,16 +94,16 @@ describe("product images", () => {
     ).rejects.toThrow("a later step failed");
 
     expect(provider.destroyed).toEqual([]);
-    expect((await ProductModel.findById(productId).lean())?.images.map((i) => i.publicId)).toEqual(["store/products/a", "store/products/b"]);
+    expect((await ProductModel.findById(productId).lean())?.images.map((i) => i.publicId)).toEqual(["mimora/store/products/a", "mimora/store/products/b"]);
   });
 
   it("when the outer transaction commits, the destroy runs after it — once", async () => {
     await withTransaction(async (tx) => {
-      await updateProduct(productId, { images: [image("store/products/b")] });
+      await updateProduct(productId, { images: [image("mimora/store/products/b")] });
       expect(provider.destroyed).toEqual([]);
       return tx.complete(undefined);
     });
-    expect(provider.destroyed).toEqual(["store/products/a"]);
+    expect(provider.destroyed).toEqual(["mimora/store/products/a"]);
   });
 
   it("a save that does not touch the gallery destroys nothing", async () => {
@@ -112,17 +112,17 @@ describe("product images", () => {
   });
 
   it("an image removed from the product also leaves the variant gallery that picked it, and the listing image is recomputed", async () => {
-    await updateProduct(productId, { images: [image("store/products/a")] });
+    await updateProduct(productId, { images: [image("mimora/store/products/a")] });
 
     const variant = await VariantModel.findById(variantId).lean();
     expect(variant?.galleryOverride).toEqual([]);
-    expect(provider.destroyed).toEqual(["store/products/b"]);
-    expect((await ProductModel.findById(productId).lean())?.listing.primaryImage?.publicId).toBe("store/products/a");
+    expect(provider.destroyed).toEqual(["mimora/store/products/b"]);
+    expect((await ProductModel.findById(productId).lean())?.listing.primaryImage?.publicId).toBe("mimora/store/products/a");
   });
 
   it("an asset still shown by another document is not destroyed", async () => {
-    await CategoryModel.create({ slug: "other", published: true, image: image("store/products/a") });
-    await updateProduct(productId, { images: [image("store/products/b")] });
+    await CategoryModel.create({ slug: "other", published: true, image: image("mimora/store/products/a") });
+    await updateProduct(productId, { images: [image("mimora/store/products/b")] });
     expect(provider.destroyed).toEqual([]);
   });
 
@@ -139,7 +139,7 @@ describe("product images", () => {
       throw new Error("cloudinary is down");
     };
     try {
-      const updated = await updateProduct(productId, { images: [image("store/products/b")] });
+      const updated = await updateProduct(productId, { images: [image("mimora/store/products/b")] });
       expect(updated.images).toHaveLength(1);
       expect(log.mock.calls.flat().join(" ")).toMatch(/orphan/);
     } finally {
@@ -151,12 +151,12 @@ describe("product images", () => {
 
 describe("category and collection images", () => {
   it.each([
-    ["category", () => CategoryModel.create({ slug: "cat-img", published: true, image: image("store/categories/old") }), (id: string, input: { image?: ImageAsset | null }) => updateCategory(id, input), CategoryModel],
-    ["collection", () => CollectionModel.create({ slug: "col-img", published: true, image: image("store/collections/old") }), (id: string, input: { image?: ImageAsset | null }) => updateCollection(id, input), CollectionModel],
+    ["category", () => CategoryModel.create({ slug: "cat-img", published: true, image: image("mimora/store/categories/old") }), (id: string, input: { image?: ImageAsset | null }) => updateCategory(id, input), CategoryModel],
+    ["collection", () => CollectionModel.create({ slug: "col-img", published: true, image: image("mimora/store/collections/old") }), (id: string, input: { image?: ImageAsset | null }) => updateCollection(id, input), CollectionModel],
   ] as const)("%s: replacing destroys the old asset, removing (null) unsets the field and destroys it, omitting touches nothing", async (name, create, update, Model) => {
     const doc = await create();
     const id = doc._id.toString();
-    const oldId = `store/${name === "category" ? "categories" : "collections"}/old`;
+    const oldId = `mimora/store/${name === "category" ? "categories" : "collections"}/old`;
 
     await update(id, {});
     expect(provider.destroyed).toEqual([]);
@@ -187,21 +187,21 @@ describe("single-write image updates roll back whole, and destroy nothing when t
       name: "category",
       Model: CategoryModel,
       repository: categoryRepository,
-      seed: () => CategoryModel.create({ slug: "rb-cat", published: true, image: image("store/categories/keep") }),
+      seed: () => CategoryModel.create({ slug: "rb-cat", published: true, image: image("mimora/store/categories/keep") }),
       update: (id: string) => updateCategory(id, { slug: "renamed", image: null }),
     },
     {
       name: "collection",
       Model: CollectionModel,
       repository: collectionRepository,
-      seed: () => CollectionModel.create({ slug: "rb-col", published: true, image: image("store/collections/keep") }),
+      seed: () => CollectionModel.create({ slug: "rb-col", published: true, image: image("mimora/store/collections/keep") }),
       update: (id: string) => updateCollection(id, { slug: "renamed", image: null }),
     },
     {
       name: "store profile",
       Model: StoreProfileModel,
       repository: storeProfileRepository,
-      seed: () => StoreProfileModel.create({ currency: "EGP", contact: { phone: "+201000000000", email: "hello@example.com" }, logo: image("store/brand/keep") }),
+      seed: () => StoreProfileModel.create({ currency: "EGP", contact: { phone: "+201000000000", email: "hello@example.com" }, logo: image("mimora/store/brand/keep") }),
       update: () => updateStoreProfile({ logo: null, tagline: { ar: "جديد", en: "New" } } as unknown as UpdateStoreProfileDto),
     },
   ] as const;

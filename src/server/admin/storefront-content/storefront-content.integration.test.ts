@@ -227,7 +227,7 @@ describe("what customers see", () => {
   });
 
   it("a collection's icon reaches the storefront with it when Staff has set one, and is simply absent otherwise", async () => {
-    const icon = { provider: "cloudinary", publicId: "store/collections/autumn-icon", secureUrl: "https://example.com/autumn-icon.png", format: "png", width: 256, height: 256, bytes: 1 };
+    const icon = { provider: "cloudinary", publicId: "mimora/store/collections/autumn-icon", secureUrl: "https://example.com/autumn-icon.png", format: "png", width: 256, height: 256, bytes: 1 };
     await saveAndPublish({ ...empty(), homeSections: [{ type: "editorialBand", collectionId, headline: L("مصنوع بعناية", "Made with care") }] });
 
     const [without] = (await getStorefrontContent(NOW)).homeSections;

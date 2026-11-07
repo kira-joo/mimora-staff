@@ -56,7 +56,7 @@ REVALIDATE_SECRET=
 
 # ── Image and receipt uploads, Cloudinary — CAPABILITY, all three or none ──
 # Unset: catalog/brand image uploads and payment-receipt uploads (InstaPay, wallet and bank
-# transfer orders) answer 503 with a clear message. Public images go under the `store/` folder;
+# transfer orders) answer 503 with a clear message. Public images go under `mimora/store/`;
 # receipts are private assets fetched only through short-lived signed URLs. Use a Cloudinary
 # product environment dedicated to Mimora.
 # Cloudinary Console → Settings (gear) → API Keys / Product environment:
