@@ -43,3 +43,18 @@ to the same canonical phone).
 4. Re-run the report: it must show `would change: 0` and `collisions: 0`.
 5. Optionally remove the legacy-variant fallback in `find-customer-by-phone.ts` once the report is clean in every
    environment (keep it cheap: it is one `$in` query).
+
+## Copy store data to a new database (`copy-store-to-target.mjs`)
+
+Copies the data a new deployment needs — catalog, settings, content — from one database to another, byte-for-byte
+(every `_id` and BSON type kept). It never overwrites: a document already in the target is compared, and any conflict
+stops the run before anything is written; the writes run in one transaction, so a run lands completely or not at all,
+and a repeat changes nothing. It does not copy orders, customers, carts, sessions, staff or permissions (those are
+created by the adoption script, the boot and the Owner bootstrap). The target's credentials are read from a file you
+pass with `--target-env=<file>` (keep it out of git — `.env*` is ignored) and are never printed.
+
+```bash
+node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local --dry-run
+node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local --confirm-target-db=<target db>
+node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local --verify
+```

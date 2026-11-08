@@ -9,7 +9,9 @@ import { listBrandsEndpoint, type LocalizedText } from "src/api/brands.endpoints
 import { listCollectionsEndpoint } from "src/api/collections.endpoints";
 import type { createProductEndpoint, updateProductEndpoint, OptionAxis, Product, ProductAttribute, ProductInput } from "src/api/products.endpoints";
 import { listSizeGuidesEndpoint } from "src/api/size-guides.endpoints";
+import type { ImageAsset } from "@kira-joo/toolkit-common";
 import { AppRoute } from "src/common/routes/app-route";
+import { sameGallery } from "src/features/media/image-gallery";
 import { displayName } from "../catalog-display";
 import { NONE, useCatalogOptions } from "../use-catalog-options";
 import { useCategoryOptions } from "../categories/use-category-options";
@@ -119,6 +121,8 @@ export interface ProductFormProps {
   oldData?: Product;
   /** How many variants exist — the options editor warns that changing options doesn't update them. */
   variantCount?: number;
+  /** The image gallery as edited on the page but not yet saved: "Save product" saves it too when it differs. */
+  pendingImages?: ImageAsset[];
 }
 
 /** API shape → form values; no product → the create defaults. Unlinked brand / size guide become the "none" option. */
@@ -145,7 +149,7 @@ export function mapProductToFormValues(oldData?: Product): ProductFormValues {
  * `null` on an edit, omitted on a create). A create opens the new draft's
  * page to add variants; an edit stays and resets to what was saved.
  */
-export function ProductForm({ endpoint, oldData, variantCount = 0 }: ProductFormProps) {
+export function ProductForm({ endpoint, oldData, variantCount = 0, pendingImages }: ProductFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = Boolean(oldData);
@@ -155,12 +159,15 @@ export function ProductForm({ endpoint, oldData, variantCount = 0 }: ProductForm
   const form = useForm<ProductFormValues>({ defaultValues: mapProductToFormValues(oldData) });
 
   const unlink = (value: string) => (value === NONE ? (isEdit ? null : undefined) : value);
-  const toBody = (values: ProductFormValues): ProductInput => ({
+  // An edit with unsaved gallery changes sends them too, so one "Save product" never leaves uploaded images behind.
+  const galleryChanged = Boolean(isEdit && pendingImages && !sameGallery(pendingImages, oldData?.images ?? []));
+  const toBody = (values: ProductFormValues): ProductInput & { images?: ImageAsset[] } => ({
     ...values,
     brandId: unlink(values.brandId),
     sizeGuide: unlink(values.sizeGuide),
     optionAxes: cleanAxes(values.optionAxes),
     attributes: cleanAttributes(values.attributes),
+    ...(galleryChanged ? { images: pendingImages } : {}),
   });
 
   return (
