@@ -1,7 +1,7 @@
 "use client";
 
 import { SortOrder } from "@kira-joo/frontend-toolkit-core";
-import { drawerPresentation, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
+import { modalPresentation, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
 import { FeatureTable, type FeatureTableHandle } from "@kira-joo/frontend-toolkit-tailwind/table";
 import { SlidersHorizontal } from "lucide-react";
 import { useRef } from "react";
@@ -30,7 +30,7 @@ export function InventoryTable() {
     const handle = openDialog<typeof AdjustStockDialog, boolean>({
       component: AdjustStockDialog,
       props: { item },
-      presentation: drawerPresentation(),
+      presentation: modalPresentation({ size: "lg" }),
     });
     const outcome = await handle.result;
     if (outcome.status === "resolved") table.current?.refetch();
@@ -63,7 +63,7 @@ export function InventoryTable() {
                   const handle = openDialog<typeof BulkAdjustDialog, boolean>({
                     component: BulkAdjustDialog,
                     props: { items: selectedItems },
-                    presentation: drawerPresentation(),
+                    presentation: modalPresentation({ size: "xl" }),
                   });
                   const outcome = await handle.result;
                   if (outcome.status === "resolved") {

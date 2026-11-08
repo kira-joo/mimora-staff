@@ -2,7 +2,7 @@
 
 import { requester, useRequesterQuery } from "@kira-joo/frontend-toolkit-core";
 import { CustomButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
-import { drawerPresentation, useConfirm, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
+import { modalPresentation, useConfirm, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
 import { Archive, ArchiveRestore, Images, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Product } from "src/api/products.endpoints";
 import { createVariantEndpoint, deleteVariantEndpoint, listVariantsEndpoint, updateVariantEndpoint, type Variant } from "src/api/variants.endpoints";
@@ -38,7 +38,7 @@ export function VariantsPanel({ product, onChanged }: { product: Product; onChan
     const outcome = await openDialog<typeof VariantDrawer, boolean>({
       component: VariantDrawer,
       props: { product, ...props },
-      presentation: drawerPresentation({ side: "inline-end" }),
+      presentation: modalPresentation({ size: "xl" }),
     }).result;
     if (outcome.status === "resolved") refresh();
   }
@@ -46,7 +46,7 @@ export function VariantsPanel({ product, onChanged }: { product: Product; onChan
     const outcome = await openDialog<typeof VariantGalleryDialog, boolean>({
       component: VariantGalleryDialog,
       props: { product, variant },
-      presentation: drawerPresentation({ side: "inline-end" }),
+      presentation: modalPresentation({ size: "xl" }),
     }).result;
     if (outcome.status === "resolved" && outcome.value) refresh();
   }

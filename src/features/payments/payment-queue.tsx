@@ -1,7 +1,7 @@
 "use client";
 
 import { SortOrder } from "@kira-joo/frontend-toolkit-core";
-import { drawerPresentation, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
+import { modalPresentation, useDialog } from "@kira-joo/frontend-toolkit-tailwind/dialog";
 import { FeatureTable, type FeatureTableHandle } from "@kira-joo/frontend-toolkit-tailwind/table";
 import { AlarmClockOff, ScanEye } from "lucide-react";
 import { useRef } from "react";
@@ -26,7 +26,7 @@ export function PaymentQueue() {
     const handle = openDialog<typeof ReviewPaymentDrawer, ReviewOutcome>({
       component: ReviewPaymentDrawer,
       props: { item },
-      presentation: drawerPresentation({ side: "inline-end" }),
+      presentation: modalPresentation({ size: "lg" }),
     });
     const outcome = await handle.result;
     if (outcome.status === "resolved") table.current?.refetch();

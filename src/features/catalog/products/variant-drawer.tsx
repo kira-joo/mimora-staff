@@ -82,7 +82,7 @@ type VariantDrawerProps = DialogContentProps<boolean> & {
 };
 
 /**
- * Create or edit one variant, in a drawer beside the product. The opener picks
+ * Create or edit one variant, in a centred dialog over the product. The opener picks
  * the endpoint. A create sends the product and the opening stock; an edit
  * never sends stock — that moves through Inventory. The API refuses a
  * duplicate SKU, a duplicate option combination, and option values that
