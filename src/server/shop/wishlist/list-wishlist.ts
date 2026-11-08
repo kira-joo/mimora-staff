@@ -1,5 +1,6 @@
 import { SortOrder } from "@kira-joo/toolkit-common";
 import { productRepository, wishlistRepository } from "../../core/repositories";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface WishlistItemView {
   _id: string;
@@ -52,7 +53,7 @@ export async function listWishlist(
           productId: item.productId.toString(),
           productSlug: product.slug,
           productName: product.name,
-          addedAt: (item as any).createdAt,
+          addedAt: (item as WithTimestamps<typeof item>).createdAt,
         };
       })
       .filter((item): item is WishlistItemView => item !== null),

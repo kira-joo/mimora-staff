@@ -1,5 +1,5 @@
 import { IsStorePhone, NormalizePhone } from "src/server/core/phone/store-phone";
-import { IsBoolean, IsOptional, IsString, MaxLength, ValidateIf } from "class-validator";
+import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class UpdateAddressDto {
   @IsOptional()

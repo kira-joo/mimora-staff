@@ -1,4 +1,4 @@
-import { NotFoundError, ValidationFailedError } from "@kira-joo/backend-toolkit-core";
+import { NotFoundError } from "@kira-joo/backend-toolkit-core";
 import { withTransaction } from "@kira-joo/backend-toolkit-mongoose";
 import type { Money } from "@kira-joo/toolkit-common";
 import { productRepository, variantRepository } from "../../core/repositories";

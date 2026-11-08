@@ -27,6 +27,11 @@ export class CreateCollectionDto {
   @Type(() => ImageAssetDto)
   image?: ImageAssetDto;
 
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ImageAssetDto)
+  icon?: ImageAssetDto;
+
   @ValidateNested()
   @Type(() => LocalizedStringDto)
   seoTitle!: LocalizedStringDto;

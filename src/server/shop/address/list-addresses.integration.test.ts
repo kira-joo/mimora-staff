@@ -69,7 +69,7 @@ describe("listAddresses", () => {
       name: "Customer",
     });
 
-    const addr1 = await AddressModel.create({
+    await AddressModel.create({
       customerId: customer._id,
       label: "First",
       recipientName: "Name",
@@ -82,7 +82,7 @@ describe("listAddresses", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const addr2 = await AddressModel.create({
+    await AddressModel.create({
       customerId: customer._id,
       label: "Second Default",
       recipientName: "Name",
@@ -95,7 +95,7 @@ describe("listAddresses", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const addr3 = await AddressModel.create({
+    await AddressModel.create({
       customerId: customer._id,
       label: "Third",
       recipientName: "Name",

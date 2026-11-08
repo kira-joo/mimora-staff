@@ -172,7 +172,7 @@ describe("Admin Inventory", () => {
         now: new Date(),
       });
 
-      const byId = new Map(updated.map((v: any) => [v._id.toString(), v]));
+      const byId = new Map(updated.map((v) => [v._id.toString(), v]));
       expect(byId.get(a.variant._id.toString())?.stock).toBe(15);
       expect(byId.get(b.variant._id.toString())?.stock).toBe(15);
     });

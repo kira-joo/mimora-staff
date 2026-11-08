@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { UnauthorizedError } from "@kira-joo/backend-toolkit-core";
 import { resolveSession, revokeAllForSubject, withTransaction } from "@kira-joo/backend-toolkit-mongoose";
 import { comparePassword, hashPassword } from "@kira-joo/backend-toolkit-next";

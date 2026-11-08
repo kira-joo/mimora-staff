@@ -299,7 +299,8 @@ describe("which order minimum applies", () => {
   });
 
   it("a zone whose minimum is unset falls back to the store-wide one", () => {
-    const { minimumOrder: _unset, ...cairoWithoutMinimum } = CAIRO;
+    const { zone, fee, estimatedDays } = CAIRO;
+    const cairoWithoutMinimum = { zone, fee, estimatedDays };
     expect(minimumOf({ zones: [cairoWithoutMinimum] })).toBe("150.00");
   });
 
@@ -308,7 +309,8 @@ describe("which order minimum applies", () => {
   });
 
   it("with no store-wide minimum either, there is none", () => {
-    const { minimumOrder: _unset, ...cairoWithoutMinimum } = CAIRO;
+    const { zone, fee, estimatedDays } = CAIRO;
+    const cairoWithoutMinimum = { zone, fee, estimatedDays };
     const result = resolveShipping(input({ zones: [cairoWithoutMinimum] }));
     expect(result.resolvable && result.orderMinimum).toBeUndefined();
   });

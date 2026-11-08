@@ -80,7 +80,6 @@ export function parseCatalogCsv(content: string): ParsedCatalogCsv {
   const errors: ImportIssue[] = [];
   const productsBySlug = new Map<string, ImportProduct>();
   const productCells = new Map<string, Map<ImportColumn, { value: string; line: number }>>();
-  const rawAxes = new Map<string, string>();
   const seenSkus = new Map<string, number>();
 
   for (const record of dataRecords) {

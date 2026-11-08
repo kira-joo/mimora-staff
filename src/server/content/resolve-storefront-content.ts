@@ -15,6 +15,8 @@ export interface ResolvedEntity {
   name: LocalizedString;
   description?: LocalizedString;
   image?: ImageAsset;
+  /** Collections only, when Staff has set one: the small picture shown where the collection is offered as a choice. */
+  icon?: ImageAsset;
 }
 
 export type ResolvedHomeSection =
@@ -135,11 +137,11 @@ async function loadReferences(body: StorefrontContentBody): Promise<Lookup> {
 
   const [categories, collections, pages] = await Promise.all([
     ids.category.size ? categoryRepository.findAll({ where: { _id: { $in: [...ids.category] }, published: true }, select: { slug: true, name: true, description: true, image: true }, lean: true }) : [],
-    ids.collection.size ? collectionRepository.findAll({ where: { _id: { $in: [...ids.collection] }, published: true }, select: { slug: true, name: true, description: true, image: true }, lean: true }) : [],
+    ids.collection.size ? collectionRepository.findAll({ where: { _id: { $in: [...ids.collection] }, published: true }, select: { slug: true, name: true, description: true, image: true, icon: true }, lean: true }) : [],
     ids.page.size ? pageRepository.findAll({ where: { _id: { $in: [...ids.page] }, published: true }, select: { slug: true, title: true }, lean: true }) : [],
   ]);
 
-  const entity = (doc: { slug: string; name: LocalizedString; description?: LocalizedString; image?: ImageAsset }): ResolvedEntity => ({ slug: doc.slug, name: doc.name, ...optional("description", doc.description), ...(doc.image ? { image: doc.image } : {}) });
+  const entity = (doc: { slug: string; name: LocalizedString; description?: LocalizedString; image?: ImageAsset; icon?: ImageAsset }): ResolvedEntity => ({ slug: doc.slug, name: doc.name, ...optional("description", doc.description), ...(doc.image ? { image: doc.image } : {}), ...(doc.icon ? { icon: doc.icon } : {}) });
   return {
     category: new Map(categories.map((doc) => [doc._id.toString(), entity(doc)])),
     collection: new Map(collections.map((doc) => [doc._id.toString(), entity(doc)])),

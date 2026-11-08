@@ -1,5 +1,11 @@
 # `mimora-staff` — architecture
 
+> **Known stale (audited 2026-11-06 against the code — the code wins):** the module list omits `content/`,
+> `invoices/`, `newsletter/`, `notifications/`, `storefront/` and `admin/`, and names a `server/inventory/` that does
+> not exist (import batches live in `server/admin/catalog-import`); `styles/tokens.css` is light-only, not a
+> two-ground layer; "derive every identifier from `store-platform`" is template text that conflicts with this
+> repository's one-brand model (CLAUDE.md); `../../docs/...` links should read `../docs/...`.
+
 **This document covers this repository's internals only.**
 
 > **The cross-repo contract is `../../docs/store/04-cross-repo-architecture.md`,

@@ -18,7 +18,6 @@ export const MEDIA_ROOT = "store";
 export const MAX_PRODUCT_IMAGES = 20;
 
 export const MEDIA_TARGETS = ["product", "category", "collection", "store-profile"] as const;
-export type MediaTarget = (typeof MEDIA_TARGETS)[number];
 
 /** The store-profile slots that hold one image each. `ogImage` is the one the storefront reads (not `defaultSeo.ogImage`). */
 export const STORE_PROFILE_SLOTS = ["logo", "favicon", "ogImage", "heroMedia"] as const;

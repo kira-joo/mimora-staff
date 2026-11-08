@@ -126,15 +126,28 @@ describe("draft then publish", () => {
 describe("publishing refuses anything that would show a customer a gap", () => {
   it("a reference to something unpublished or missing, by field", async () => {
     await CollectionModel.updateOne({ _id: collectionId }, { $set: { published: false } });
-    const missing = new mongoose.Types.ObjectId().toString();
+    // A draft can't be SAVED naming a missing category, and `deleteCategory` refuses while one links to it — so the only
+    // way to meet a missing one at publish time is data that was removed behind the draft's back. Simulate that directly.
+    const doomed = (await CategoryModel.create({ name: L("مؤقت", "Doomed"), slug: "doomed", sortOrder: 0, published: true }))._id;
     const saved = await saveStorefrontContentDraft({
       ...empty(),
-      headerNavigation: [{ target: { kind: "category", id: missing } }],
+      headerNavigation: [{ target: { kind: "category", id: doomed.toString() } }],
       homeSections: [{ type: "editorialBand", collectionId, headline: L("عنوان", "Headline") }],
     });
+    await CategoryModel.deleteOne({ _id: doomed });
 
     expect(await fieldsOf(publishStorefrontContent(saved.draftRevision, STAFF, NOW))).toEqual(["headerNavigation.0.target", "homeSections.0.collectionId"]);
     expect((await getStorefrontContentAdmin()).published).toBeNull();
+  });
+
+  it("a draft may link to an unpublished category (the preview lists it), but saving one that does not exist is refused by field", async () => {
+    const hidden = (await CategoryModel.create({ name: L("مخفي", "Hidden"), slug: "hidden", sortOrder: 0, published: false }))._id.toString();
+    const saved = await saveStorefrontContentDraft({ ...empty(), headerNavigation: [{ target: { kind: "category", id: hidden } }] });
+    expect((await previewStorefrontContentDraft(NOW)).problems.map((problem) => problem.field)).toEqual(["headerNavigation.0.target"]);
+
+    const ghost = new mongoose.Types.ObjectId().toString();
+    expect(await fieldsOf(saveStorefrontContentDraft({ ...empty(), headerNavigation: [{ target: { kind: "category", id: ghost } }], homeSections: [{ type: "categoryTiles", categoryIds: [categoryId, ghost] }] }))).toEqual(["headerNavigation.0.target", "homeSections.0.categoryIds.1"]);
+    expect((await getStorefrontContentAdmin()).draftRevision).toBe(saved.draftRevision);
   });
 
   it("text missing the default locale (D-11), but not optional text blank in both", async () => {
@@ -211,6 +224,19 @@ describe("what customers see", () => {
     await CollectionModel.updateOne({ _id: collectionId }, { $set: { published: false } });
 
     expect((await getStorefrontContent(NOW)).homeSections).toEqual([{ type: "assuranceStrip" }]);
+  });
+
+  it("a collection's icon reaches the storefront with it when Staff has set one, and is simply absent otherwise", async () => {
+    const icon = { provider: "cloudinary", publicId: "store/collections/autumn-icon", secureUrl: "https://example.com/autumn-icon.png", format: "png", width: 256, height: 256, bytes: 1 };
+    await saveAndPublish({ ...empty(), homeSections: [{ type: "editorialBand", collectionId, headline: L("مصنوع بعناية", "Made with care") }] });
+
+    const [without] = (await getStorefrontContent(NOW)).homeSections;
+    expect(without).toMatchObject({ type: "editorialBand", collection: { slug: "autumn" } });
+    expect((without as { collection: object }).collection).not.toHaveProperty("icon");
+
+    await CollectionModel.updateOne({ _id: collectionId }, { $set: { icon } });
+    const [withIcon] = (await getStorefrontContent(NOW)).homeSections;
+    expect(withIcon).toMatchObject({ type: "editorialBand", collection: { slug: "autumn", name: L("خريف", "Autumn"), icon: { secureUrl: icon.secureUrl, width: 256, height: 256 } } });
   });
 
   it("takes the hero image from the store profile", async () => {

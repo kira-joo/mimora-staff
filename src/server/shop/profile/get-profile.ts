@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import { customerRepository } from "../../core/repositories";
 import { toConsentView, type MarketingConsentView } from "./marketing-consent";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface ProfileView {
   _id: string;
@@ -34,7 +34,7 @@ export async function getProfile(customerId: string): Promise<ProfileView> {
     phoneVerified: customer.phoneVerified,
     emailVerified: customer.emailVerified,
     marketingConsent: toConsentView(customer.marketingConsent),
-    createdAt: (customer as any).createdAt,
-    updatedAt: (customer as any).updatedAt,
+    createdAt: (customer as WithTimestamps<typeof customer>).createdAt,
+    updatedAt: (customer as WithTimestamps<typeof customer>).updatedAt,
   };
 }

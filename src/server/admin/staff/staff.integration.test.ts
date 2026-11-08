@@ -60,7 +60,7 @@ describe("listStaff", () => {
   it("never exposes passwordHash", async () => {
     await StaffUserModel.create({ name: "Alice", email: "alice@example.com", roles: [] });
     const result = await listStaff({ limit: 10, page: 1 });
-    expect((result.data[0] as any).passwordHash).toBeUndefined();
+    expect((result.data[0] as { passwordHash?: unknown }).passwordHash).toBeUndefined();
   });
 });
 

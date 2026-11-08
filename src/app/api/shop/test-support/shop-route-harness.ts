@@ -25,6 +25,7 @@ export async function customerCookie(customerId: string): Promise<string> {
   return `${CUSTOMER_SESSION_COOKIE}=${token}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the body is arbitrary parsed JSON from the route under test; every caller indexes into it freely, and `unknown` would force a cast at each of those assertions.
 export async function callShopRoute(handler: ShopRouteHandler, path: string, init: ShopCallInit = {}): Promise<{ status: number; body: any; headers: Headers }> {
   const headers: Record<string, string> = { "content-type": "application/json", ...init.headers };
   if (init.customerId) headers.cookie = await customerCookie(init.customerId);

@@ -1,5 +1,4 @@
-import { clearTokenCookie, eraseTokenCookie, setTokenCookie, writeTokenCookie } from "@kira-joo/backend-toolkit-next";
-import type { NextResponse } from "next/server";
+import { eraseTokenCookie, writeTokenCookie } from "@kira-joo/backend-toolkit-next";
 
 /**
  * Customer cookie identifiers — wholly independent names from the staff
@@ -65,23 +64,4 @@ export async function clearCustomerSessionCookies(): Promise<void> {
   await eraseTokenCookie({ name: CUSTOMER_SESSION_COOKIE, path: "/" });
   await eraseTokenCookie({ name: CUSTOMER_REFRESH_COOKIE, path: CUSTOMER_REFRESH_COOKIE_PATH });
   await eraseTokenCookie({ name: CUSTOMER_MARKER_COOKIE, httpOnly: false, path: "/" });
-}
-
-/** `NextResponse`-taking variants, for tests that construct their own response rather than going through a route-factory handler. */
-export function setCustomerSessionCookiesOnResponse(response: NextResponse, values: CustomerSessionCookieValues): NextResponse {
-  setTokenCookie(response, values.accessToken, { name: CUSTOMER_SESSION_COOKIE, path: "/", maxAge: values.accessTokenTtlSeconds });
-  setTokenCookie(response, values.refreshToken, {
-    name: CUSTOMER_REFRESH_COOKIE,
-    path: CUSTOMER_REFRESH_COOKIE_PATH,
-    maxAge: values.refreshTokenTtlSeconds,
-  });
-  setTokenCookie(response, "1", { name: CUSTOMER_MARKER_COOKIE, httpOnly: false, path: "/", maxAge: values.refreshTokenTtlSeconds });
-  return response;
-}
-
-export function clearCustomerSessionCookiesOnResponse(response: NextResponse): NextResponse {
-  clearTokenCookie(response, { name: CUSTOMER_SESSION_COOKIE, path: "/" });
-  clearTokenCookie(response, { name: CUSTOMER_REFRESH_COOKIE, path: CUSTOMER_REFRESH_COOKIE_PATH });
-  clearTokenCookie(response, { name: CUSTOMER_MARKER_COOKIE, httpOnly: false, path: "/" });
-  return response;
 }

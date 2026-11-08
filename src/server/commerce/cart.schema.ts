@@ -3,10 +3,8 @@ import {
   MongoSchema,
   Relation,
   Unique,
-  moneyField,
   createMongoModel,
 } from "@kira-joo/backend-toolkit-mongoose";
-import type { Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
 /**

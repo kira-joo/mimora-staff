@@ -17,7 +17,6 @@ export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
  * refresh lifetime.
  */
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-export const REFRESH_TOKEN_TTL_SECONDS = REFRESH_TOKEN_TTL_MS / 1000;
 
 /** How long a password-reset or email-verification token stays valid before it must be re-requested. */
 export const VERIFICATION_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour

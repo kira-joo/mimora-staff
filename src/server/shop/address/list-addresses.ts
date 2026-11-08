@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import { AddressModel } from "../../core/address.schema";
 import { addressRepository } from "../../core/repositories";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface AddressView {
   _id: string;
@@ -55,8 +55,8 @@ export async function listAddresses(
       governorate: addr.governorate,
       postalCode: addr.postalCode,
       isDefault: addr.isDefault,
-      createdAt: (addr as any).createdAt,
-      updatedAt: (addr as any).updatedAt,
+      createdAt: (addr as WithTimestamps<typeof addr>).createdAt,
+      updatedAt: (addr as WithTimestamps<typeof addr>).updatedAt,
     })),
     total,
   };

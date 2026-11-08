@@ -48,7 +48,7 @@ function SectionFields({ section, index, form, options, disabled }: { section: S
             <FormLocalizedInput control={form.control} name={path("actionLabel")} label="Button text (optional)" disabled={disabled} />
             <FormSelect control={form.control} name={path("target")} label="Button links to (optional)" options={[{ value: NONE, label: "No button" }, ...options.links]} placeholder="No button" description="The button needs both its text and where it goes." disabled={disabled} />
           </div>
-          <SettingsNote>The hero image comes from the store profile's hero media (Settings, Store), not from this section.</SettingsNote>
+          <SettingsNote>The hero image comes from the store profile&apos;s hero media (Settings, Store), not from this section.</SettingsNote>
         </>
       );
     case "collectionStory":

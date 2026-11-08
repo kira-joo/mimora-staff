@@ -94,8 +94,8 @@ describe("Admin Settings — singleton-settings helper", () => {
     it("a partial first save on StoreProfile leaves its other required-with-no-default fields absent, same as every other singleton", async () => {
       const settings = await upsertSingletonSettings(storeProfileRepository, { name: { ar: "متجر", en: "Store" } });
       expect(settings.name.en).toBe("Store");
-      expect((settings as any).contact).toBeUndefined();
-      expect((settings as any).currency).toBeUndefined();
+      expect((settings as { contact?: unknown }).contact).toBeUndefined();
+      expect((settings as { currency?: unknown }).currency).toBeUndefined();
     });
 
     it("allows a partial StoreProfile update once the required fields are already set", async () => {

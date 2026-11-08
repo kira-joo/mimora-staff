@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
 import { AddressModel } from "../../core/address.schema";
 import { addressRepository } from "../../core/repositories";
 import type { AddressView } from "./list-addresses";
+import type { WithTimestamps } from "../../core/with-timestamps";
 
 export interface CreateAddressInput {
   label: string;
@@ -63,7 +63,7 @@ export async function createAddress(customerId: string, input: CreateAddressInpu
     governorate: created.governorate,
     postalCode: created.postalCode,
     isDefault: created.isDefault,
-    createdAt: (created as any).createdAt,
-    updatedAt: (created as any).updatedAt,
+    createdAt: (created as WithTimestamps<typeof created>).createdAt,
+    updatedAt: (created as WithTimestamps<typeof created>).updatedAt,
   };
 }

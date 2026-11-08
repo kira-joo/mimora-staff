@@ -1,6 +1,6 @@
 import { Transform, Type } from "class-transformer";
 import { expandHexShorthand } from "../../engines/theme/color-math";
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsNumber, IsOptional, Matches, Max, Min, ValidateNested } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsNumber, Matches, Max, Min, ValidateNested } from "class-validator";
 
 /**
  * `#RGB` or `#RRGGBB`. A three-digit colour is expanded to six at the

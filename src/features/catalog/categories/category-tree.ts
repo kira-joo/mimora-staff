@@ -35,3 +35,18 @@ export function categoryOptions(categories: readonly Category[], options: { excl
   for (const root of siblingsOf(roots, null).concat(roots.filter((category) => category.parentId))) visit(root, []);
   return result;
 }
+
+/**
+ * The form's publish switch after the parent picker changes — a default the merchant can still change, never a rule:
+ * the API is the source of truth (a published sub-category needs a published parent) and refuses anything else.
+ *  - creating: follow the new parent — published under a published parent or at the top level, unpublished otherwise;
+ *  - editing: only ever switch OFF, when the new parent is unpublished and the category is published (the one state
+ *    the API would refuse); never publish an existing category the merchant left unpublished.
+ * `parentPublished` is null for the top level and undefined while the parent's state is not known yet (no change).
+ */
+export function publishedForParent(input: { mode: "create" | "edit"; parentPublished: boolean | null | undefined; published: boolean }): boolean {
+  const { mode, parentPublished, published } = input;
+  if (parentPublished === undefined) return published;
+  if (mode === "create") return parentPublished ?? true;
+  return parentPublished === false ? false : published;
+}

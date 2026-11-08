@@ -64,12 +64,13 @@ function failAfterWrite(repo: object, method: string, nth: number) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- sanitizeLeanResult revives BSON Decimal128 into Decimal, so the lean document's real type differs from the schema type; these tests read it as loosely-typed data.
 const lean = <T>(value: T) => sanitizeLeanResult(value) as T extends null ? null : any;
 const stage = async (content: string | Uint8Array, caller = owner, filename = "catalog.csv") => caller.call(collection.POST, "/api/admin/catalog-imports", { method: "POST", body: csvForm(content, filename) });
 const stageOk = async (content = GOOD) => {
   const response = await stage(content);
   expect(response.status).toBe(201);
-  return (await response.json()) as { _id: string; status: string; rowErrors: Array<{ row: number; message: string }>; warnings: unknown[]; summary: any; rows: any[] };
+  return (await response.json()) as { _id: string; status: string; rowErrors: Array<{ row: number; message: string }>; warnings: unknown[]; summary: unknown; rows: Array<{ slug: string; variants: unknown[] }> };
 };
 const publish = (id: string, caller = owner) => caller.call(publishRoute, `/api/admin/catalog-imports/${id}/publish`, { method: "PUT", params: { id } });
 const live = async () => ({ products: await ProductModel.countDocuments(), variants: await VariantModel.countDocuments(), movements: await StockMovementModel.countDocuments() });
@@ -170,13 +171,13 @@ describe("publishing", () => {
     expect(thawb.description).toEqual({ en: "", ar: "ثوب قطني، مريح" });
     expect(thawb.lifecycle).toBe("published");
     expect(thawb.brandId.toString()).toBe((await BrandModel.findOne({ slug: "acme" }))!._id.toString());
-    expect(thawb.optionAxes.map((axis: any) => axis.key)).toEqual(["colour", "size"]);
-    expect(thawb.optionAxes[0].values.map((v: any) => [v.key, v.label.en, v.label.ar])).toEqual([["white", "White", "أبيض"], ["black", "black", "black"]]);
+    expect(thawb.optionAxes.map((axis: { key: string }) => axis.key)).toEqual(["colour", "size"]);
+    expect(thawb.optionAxes[0].values.map((v: { key: string; label: { en: string; ar: string } }) => [v.key, v.label.en, v.label.ar])).toEqual([["white", "White", "أبيض"], ["black", "black", "black"]]);
     expect(thawb.attributes[0].values[0].value).toEqual({ en: "Cotton", ar: "قطن" });
     expect(thawb.listing.purchasableVariantCount).toBe(1); // TH-W-L has no stock, TH-B-M is off sale — only TH-W-M can be bought
 
     const variants = lean(await VariantModel.find({ productId: thawb._id }).lean());
-    const bySku = Object.fromEntries(variants.map((v: any) => [v.sku, v]));
+    const bySku = Object.fromEntries(variants.map((v: { sku: string }) => [v.sku, v]));
     expect(bySku["TH-W-M"].price.toFixed(2)).toBe("450.00");
     expect(bySku["TH-W-M"].compareAtPrice.toFixed(2)).toBe("500.00");
     expect(bySku["TH-W-M"].weight).toBe(600);
@@ -354,7 +355,7 @@ describe("permissions — the negative cases", () => {
     const batch = (await (await stage(GOOD, stager)).json()) as { _id: string };
     const reader = await signInWithPermissions([AppPermission.CATALOG_IMPORT_BATCH.READ, AppPermission.CATALOG_IMPORT_BATCH.READ_ONE]);
     const list = await (await reader.call(collection.GET, "/api/admin/catalog-imports")).json();
-    expect(list.data.map((b: any) => b._id)).toEqual([batch._id]);
+    expect(list.data.map((b: { _id: string }) => b._id)).toEqual([batch._id]);
     expect("rows" in list.data[0]).toBe(false);
     expect(list.data[0].summary.products.create).toBe(2);
     const publisher = await signInWithPermissions([CustomPermission.CATALOG_PUBLISH]);

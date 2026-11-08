@@ -12,7 +12,7 @@ export function ReadOnlyNotice() {
   return (
     <p role="status" className="mb-4 flex items-start gap-2 border border-[var(--st-line)] bg-[var(--st-surface)] p-3 text-[var(--st-ink-muted)]">
       <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-      <span>You can view these settings, but your role can't change them.</span>
+      <span>You can view these settings, but your role can&apos;t change them.</span>
     </p>
   );
 }

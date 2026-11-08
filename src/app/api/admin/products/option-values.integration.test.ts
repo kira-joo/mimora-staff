@@ -58,7 +58,7 @@ const update = async (id: string, body: unknown) => {
 };
 const storefront = async (handler: RouteHandler, path: string, params: Record<string, string> = {}) => {
   const response = await handler(new NextRequest(`http://localhost${path}`), { params: Promise.resolve(params) });
-  return { status: response.status, body: (await response.json()) as any };
+  return { status: response.status, body: await response.json() };
 };
 
 describe("optionAxes[].values", () => {

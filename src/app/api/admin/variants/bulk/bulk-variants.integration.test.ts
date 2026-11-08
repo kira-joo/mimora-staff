@@ -51,6 +51,7 @@ function failAfterWrite(repo: object, method: string, nth: number) {
 }
 
 /** Raw lean reads return BSON Decimal128; the toolkit revives it to Decimal, which is what the app reads. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- sanitizeLeanResult revives BSON Decimal128 into Decimal, so the lean document's real type differs from the schema type; these tests read it as loosely-typed data.
 const lean = <T>(value: T) => sanitizeLeanResult(value) as T extends null ? null : any;
 
 const combo = (colour: string, size: string) => [{ key: "colour", value: colour }, { key: "size", value: size }];

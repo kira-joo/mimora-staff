@@ -49,7 +49,7 @@ afterAll(async () => {
 beforeEach(clean);
 afterEach(clean);
 
-const json = async (response: Response) => ({ status: response.status, body: (await response.json()) as any });
+const json = async (response: Response) => ({ status: response.status, body: await response.json() });
 const history = (caller: AdminCaller, id: string) => caller.call(revisionsRoute, `/api/admin/pages/${id}/revisions`, { params: { id } }).then(json);
 const revision = (caller: AdminCaller, id: string, version: string | number) => caller.call(revisionRoute, `/api/admin/pages/${id}/revisions/${version}`, { params: { id, version: String(version) } }).then(json);
 
@@ -61,7 +61,7 @@ describe("GET /api/admin/pages/[id]/revisions — version history", () => {
     const { status, body } = await history(owner, page._id.toString());
     expect(status).toBe(200);
     expect(body.currentVersion).toBe(2);
-    expect(body.revisions.map((r: any) => [r.version, r.isCurrent])).toEqual([[2, true], [1, false]]);
+    expect(body.revisions.map((r: { version: number; isCurrent: boolean }) => [r.version, r.isCurrent])).toEqual([[2, true], [1, false]]);
     expect(body.revisions[0].title).toMatchObject(TITLE);
     expect(JSON.stringify(body)).not.toContain(V1.en); // the list is light; text comes from the single-version fetch
   });
@@ -77,7 +77,7 @@ describe("GET /api/admin/pages/[id]/revisions — version history", () => {
     const page = await createPage({ slug: "legacy", title: TITLE, content: V1 });
     await PageRevisionModel.deleteMany({});
     const { body } = await history(owner, page._id.toString());
-    expect(body.revisions.map((r: any) => [r.version, r.isCurrent])).toEqual([[1, true]]);
+    expect(body.revisions.map((r: { version: number; isCurrent: boolean }) => [r.version, r.isCurrent])).toEqual([[1, true]]);
   });
 
   it("is 404 for a page that does not exist and 400 for a malformed id", async () => {
@@ -231,9 +231,9 @@ describe("GET /api/admin/pages/legal-drafts — status", () => {
     await createPage({ slug: "privacy", title: TITLE, content: V1, published: true });
 
     const { body } = await owner.call(legalStatus, LEGAL).then(json);
-    const states = Object.fromEntries(body.pages.map((page: any) => [page.slug, page.state]));
+    const states = Object.fromEntries(body.pages.map((page: { slug: string; state: string }) => [page.slug, page.state]));
     expect(states).toMatchObject({ terms: "unpublished", privacy: "published", returns: "missing", shipping: "missing", cookies: "missing", accessibility: "missing", contact: "missing" });
-    expect(body.pages.map((page: any) => page.slug)).toEqual([...LEGAL_PAGE_SLUGS]);
+    expect(body.pages.map((page: { slug: string }) => page.slug)).toEqual([...LEGAL_PAGE_SLUGS]);
     expect(body.termsPublished).toBe(false);
   });
 
@@ -244,7 +244,7 @@ describe("GET /api/admin/pages/legal-drafts — status", () => {
 
   it("flags a page whose text still carries the draft marker, and clears the flag once the owner replaces the text", async () => {
     await owner.call(legalCreate, LEGAL, { method: "POST" });
-    const flags = async () => Object.fromEntries((await owner.call(legalStatus, LEGAL).then(json)).body.pages.map((page: any) => [page.slug, page.draftMarkerPresent]));
+    const flags = async () => Object.fromEntries((await owner.call(legalStatus, LEGAL).then(json)).body.pages.map((page: { slug: string; draftMarkerPresent: boolean }) => [page.slug, page.draftMarkerPresent]));
     expect((await flags()).terms).toBe(true);
 
     const terms = await PageModel.findOne({ slug: "terms" }).lean();

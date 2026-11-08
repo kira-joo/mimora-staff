@@ -1,5 +1,11 @@
 # `mimora-staff` — Backoffice MDS
 
+> **Known stale (audited 2026-11-06 against the code — the code wins):** there is no `src/proxy.ts` or `middleware.ts`
+> here; the order lifecycle in the code is `PLACED → CONFIRMED → PROCESSING → READY_FOR_PICKUP | SHIPPED → IN_TRANSIT →
+> DELIVERED | COLLECTED`, with `CANCELLED` (no `DISPATCHED`, `READY_FOR_COLLECTION` or `REJECTED` order status — see
+> `order-state.types.ts`); references to deriving identifiers from `store-platform` are template text superseded by
+> CLAUDE.md's one-brand model; `../../docs/...` links should read `../docs/...`.
+
 The master specification for the backoffice **and the single backend for both
 applications**. The workspace `CLAUDE.md` outranks this document;
 `../docs/store/04-cross-repo-architecture.md` governs anything that spans the two

@@ -11,6 +11,7 @@ import type { FulfilmentSettingsSchema } from "../fulfilment/fulfilment-settings
 export async function getFulfilmentSettings(): Promise<Omit<FulfilmentSettingsSchema, "carriers">> {
   const settings = await fulfilmentSettingsRepository.findOne({ where: {}, skipThrowError: true, lean: true });
   if (!settings) throw new NotFoundError("Fulfilment settings are not configured.");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- rest-destructuring is the omission: `carriers` must not reach the storefront, and every other stored field must pass through unchanged.
   const { carriers: _carriers, ...storefront } = settings;
   return storefront;
 }

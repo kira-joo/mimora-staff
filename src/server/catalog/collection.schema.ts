@@ -35,6 +35,14 @@ export class CollectionSchema {
   @MongoField(imageAssetField())
   image?: ImageAsset;
 
+  /**
+   * A small picture that stands for the collection where it is listed as a choice (the storefront's occasions
+   * panel). Optional and separate from `image`, which is a photograph: an icon is drawn to sit in a small circle.
+   * Records written before this field existed simply have none, and the storefront shows its own default.
+   */
+  @MongoField(imageAssetField())
+  icon?: ImageAsset;
+
   @MongoField(localizedStringField())
   seoTitle!: LocalizedString;
 
