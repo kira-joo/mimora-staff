@@ -72,12 +72,11 @@ describe("capability variables are never fatal", () => {
   });
 
   it("a set-but-weak secret or a non-https URL in production is an error notice, not a problem", () => {
-    const report = prod({ ...REQUIRED, REVALIDATE_SECRET: "weak", STOREFRONT_REVALIDATE_URL: "http://shop.example/api/revalidate", JOBS_SECRET: "weak", CRON_SECRET: "x".repeat(40) });
+    const report = prod({ ...REQUIRED, REVALIDATE_SECRET: "weak", STOREFRONT_REVALIDATE_URL: "http://shop.example/api/revalidate" });
     expect(report.problems).toEqual([]);
     const text = report.notices.map((notice) => notice.message).join("\n");
     expect(text).toMatch(/REVALIDATE_SECRET must be at least 32/);
     expect(text).toMatch(/STOREFRONT_REVALIDATE_URL must be https in production/);
-    expect(text).toMatch(/JOBS_SECRET must be at least 32/);
     expect(report.notices.every((notice) => notice.level === "error")).toBe(true);
   });
 
@@ -100,11 +99,6 @@ describe("capability variables are never fatal", () => {
   it("flags two audiences sharing a secret, by name", () => {
     const report = prod({ ...REQUIRED, REVALIDATE_SECRET: STAFF });
     expect(report.notices.some((notice) => /STAFF_JWT_SECRET and REVALIDATE_SECRET have the same value/.test(notice.message))).toBe(true);
-  });
-
-  it("JOBS_SECRET and CRON_SECRET may be the same value: one audience", () => {
-    const value = "j".repeat(40);
-    expect(prod({ ...REQUIRED, JOBS_SECRET: value, CRON_SECRET: value }).notices).toEqual([]);
   });
 });
 
@@ -150,7 +144,7 @@ describe("the declaration table", () => {
   });
 
   it("marks credentials secret and plain settings not", () => {
-    for (const name of ["MONGODB_URI", "STAFF_JWT_SECRET", "CUSTOMER_JWT_SECRET", "REVALIDATE_SECRET", "JOBS_SECRET", "CRON_SECRET", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "SMTP_PASS"]) expect(isSecretVariable(name)).toBe(true);
+    for (const name of ["MONGODB_URI", "STAFF_JWT_SECRET", "CUSTOMER_JWT_SECRET", "REVALIDATE_SECRET", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET", "SMTP_PASS"]) expect(isSecretVariable(name)).toBe(true);
     for (const name of ["MONGODB_DB", "STORE_ID", "STORE_TIMEZONE", "SMTP_HOST", "STOREFRONT_URL"]) expect(isSecretVariable(name)).toBe(false);
   });
 });

@@ -12,7 +12,10 @@ import { BRAND_IMAGE_UPLOAD_POLICY, CATALOG_IMAGE_UPLOAD_POLICY, FAVICON_UPLOAD_
  * This module is imported by the console as well (the same policy object drives the client pre-check and
  * the server check, never two hand-kept sets of numbers), so it carries no server-only import.
  */
-export const MEDIA_ROOT = "store";
+/** The project root every Mimora asset in the shared Cloudinary account lives under. */
+export const CLOUDINARY_ROOT = "mimora";
+
+export const MEDIA_ROOT = `${CLOUDINARY_ROOT}/store`;
 
 /** One gallery, not a media library; also bounds what a single save can orphan. Shared by the DTO and the product image manager. */
 export const MAX_PRODUCT_IMAGES = 20;

@@ -1,14 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/internal/jobs/expire-unpaid-orders",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/internal/jobs/sweep-orphan-images",
-      "schedule": "17 3 * * *"
-    }
-  ]
+  "framework": "nextjs"
 }

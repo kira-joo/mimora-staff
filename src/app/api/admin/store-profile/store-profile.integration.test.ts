@@ -91,54 +91,54 @@ describe("store profile round trip", () => {
   });
 
   it("refuses defaultSeo.ogImage: the OG image is the profile's own ogImage, the field the storefront reads", async () => {
-    const response = await put({ defaultSeo: { ogImage: image("store/store-profile/x") } });
+    const response = await put({ defaultSeo: { ogImage: image("mimora/store/store-profile/x") } });
     expect(response.status).toBe(400);
   });
 
   it("leaves a legacy defaultSeo.ogImage already on the document untouched by a title edit", async () => {
-    await StoreProfileModel.collection.insertOne({ defaultSeo: { ogImage: image("store/legacy/og") }, currency: "EGP" });
+    await StoreProfileModel.collection.insertOne({ defaultSeo: { ogImage: image("mimora/store/legacy/og") }, currency: "EGP" });
     await put({ defaultSeo: { title: { ar: "ع", en: "T" } } });
-    expect((await stored())?.defaultSeo.ogImage.publicId).toBe("store/legacy/og");
+    expect((await stored())?.defaultSeo.ogImage.publicId).toBe("mimora/store/legacy/og");
   });
 });
 
 describe("store-identity images", () => {
   it("saves logo, favicon, ogImage and heroMedia, and reads them back", async () => {
-    await put({ ...FULL, logo: image("store/store-profile/logo"), favicon: image("store/store-profile/fav"), ogImage: image("store/store-profile/og"), heroMedia: image("store/store-profile/hero") });
+    await put({ ...FULL, logo: image("mimora/store/store-profile/logo"), favicon: image("mimora/store/store-profile/fav"), ogImage: image("mimora/store/store-profile/og"), heroMedia: image("mimora/store/store-profile/hero") });
     const read = await get();
-    expect(read.logo.publicId).toBe("store/store-profile/logo");
+    expect(read.logo.publicId).toBe("mimora/store/store-profile/logo");
     expect(read.favicon.secureUrl).toContain("fav");
-    expect(read.ogImage.publicId).toBe("store/store-profile/og");
+    expect(read.ogImage.publicId).toBe("mimora/store/store-profile/og");
     expect(read.heroMedia.width).toBe(600);
   });
 
   it("replacing an image destroys the old asset after the write; the other slots are untouched", async () => {
-    await put({ logo: image("store/store-profile/logo-1"), heroMedia: image("store/store-profile/hero") });
+    await put({ logo: image("mimora/store/store-profile/logo-1"), heroMedia: image("mimora/store/store-profile/hero") });
     provider.destroyed.length = 0;
-    await put({ logo: image("store/store-profile/logo-2") });
-    expect(provider.destroyed).toEqual(["store/store-profile/logo-1"]);
-    expect((await get()).heroMedia.publicId).toBe("store/store-profile/hero");
+    await put({ logo: image("mimora/store/store-profile/logo-2") });
+    expect(provider.destroyed).toEqual(["mimora/store/store-profile/logo-1"]);
+    expect((await get()).heroMedia.publicId).toBe("mimora/store/store-profile/hero");
   });
 
   it("null removes the slot (unset in the database) and destroys the asset", async () => {
-    await put({ ogImage: image("store/store-profile/og-1") });
+    await put({ ogImage: image("mimora/store/store-profile/og-1") });
     provider.destroyed.length = 0;
     const response = await put({ ogImage: null });
     expect(response.status).toBe(200);
-    expect(provider.destroyed).toEqual(["store/store-profile/og-1"]);
+    expect(provider.destroyed).toEqual(["mimora/store/store-profile/og-1"]);
     expect("ogImage" in ((await stored()) ?? {})).toBe(false);
   });
 
   it("a save that leaves images out destroys nothing", async () => {
-    await put({ logo: image("store/store-profile/logo-1") });
+    await put({ logo: image("mimora/store/store-profile/logo-1") });
     provider.destroyed.length = 0;
     await put({ name: { ar: "ا", en: "A" } });
     expect(provider.destroyed).toEqual([]);
-    expect((await get()).logo.publicId).toBe("store/store-profile/logo-1");
+    expect((await get()).logo.publicId).toBe("mimora/store/store-profile/logo-1");
   });
 
   it("a malformed image record is refused with 400 and nothing is written", async () => {
-    const response = await put({ logo: { publicId: "store/store-profile/x" } });
+    const response = await put({ logo: { publicId: "mimora/store/store-profile/x" } });
     expect(response.status).toBe(400);
     expect(await stored()).toBeNull();
   });
@@ -149,7 +149,7 @@ describe("permissions — the negative cases", () => {
     await put(FULL);
     const reader = await signInWithPermissions([AppPermission.STORE_PROFILE.READ]);
     expect((await reader.call(GET, "/api/admin/store-profile")).status).toBe(200);
-    const response = await put({ name: { ar: "اختراق", en: "Hacked" }, logo: image("store/store-profile/evil") }, reader);
+    const response = await put({ name: { ar: "اختراق", en: "Hacked" }, logo: image("mimora/store/store-profile/evil") }, reader);
     expect(response.status).toBe(403);
     const doc = await stored();
     expect(doc?.name).toEqual(FULL.name);

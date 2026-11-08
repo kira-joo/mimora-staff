@@ -46,36 +46,36 @@ beforeEach(async () => {
   provider.destroyed.length = 0;
   await Promise.all([ProductModel.deleteMany({}), VariantModel.deleteMany({}), CategoryModel.deleteMany({})]);
   const category = await CategoryModel.create({ slug: "c", published: true });
-  const product = await ProductModel.create({ name: { ar: "منتج", en: "P" }, description: { ar: "", en: "" }, slug: "p", categoryId: category._id, images: [image("store/products/a"), image("store/products/b")] });
+  const product = await ProductModel.create({ name: { ar: "منتج", en: "P" }, description: { ar: "", en: "" }, slug: "p", categoryId: category._id, images: [image("mimora/store/products/a"), image("mimora/store/products/b")] });
   productId = product._id.toString();
-  variantId = (await VariantModel.create({ productId: product._id, sku: "V", variantKey: `${productId}`, price: toMoney("5.00"), stock: 1, galleryOverride: [image("store/products/b")] }))._id.toString();
+  variantId = (await VariantModel.create({ productId: product._id, sku: "V", variantKey: `${productId}`, price: toMoney("5.00"), stock: 1, galleryOverride: [image("mimora/store/products/b")] }))._id.toString();
 });
 
 describe("product gallery", () => {
   it("saves the order the person chose, and the first image becomes the listing's primary", async () => {
-    expect((await put([image("store/products/b"), image("store/products/a")])).status).toBe(200);
+    expect((await put([image("mimora/store/products/b"), image("mimora/store/products/a")])).status).toBe(200);
     const saved = await ProductModel.findById(productId).lean();
-    expect(saved?.images.map((i) => i.publicId)).toEqual(["store/products/b", "store/products/a"]);
-    expect(saved?.listing.primaryImage?.publicId).toBe("store/products/b");
+    expect(saved?.images.map((i) => i.publicId)).toEqual(["mimora/store/products/b", "mimora/store/products/a"]);
+    expect(saved?.listing.primaryImage?.publicId).toBe("mimora/store/products/b");
     expect(provider.destroyed).toEqual([]);
   });
 
   it("removing an image takes it out of the variant that picked it, and destroys the file after the save", async () => {
-    expect((await put([image("store/products/a")])).status).toBe(200);
+    expect((await put([image("mimora/store/products/a")])).status).toBe(200);
     expect((await VariantModel.findById(variantId).lean())?.galleryOverride).toEqual([]);
-    expect(provider.destroyed).toEqual(["store/products/b"]);
+    expect(provider.destroyed).toEqual(["mimora/store/products/b"]);
   });
 
   it("a variant may pick from the gallery through its own route", async () => {
-    const response = await owner.call(variantRoute, `/api/admin/variants/${variantId}`, { method: "PUT", params: { id: variantId }, body: { galleryOverride: [image("store/products/a")] } });
+    const response = await owner.call(variantRoute, `/api/admin/variants/${variantId}`, { method: "PUT", params: { id: variantId }, body: { galleryOverride: [image("mimora/store/products/a")] } });
     expect(response.status).toBe(200);
-    expect((await VariantModel.findById(variantId).lean())?.galleryOverride?.map((i) => i.publicId)).toEqual(["store/products/a"]);
+    expect((await VariantModel.findById(variantId).lean())?.galleryOverride?.map((i) => i.publicId)).toEqual(["mimora/store/products/a"]);
   });
 
   it.each([
-    ["a record with no secureUrl", [{ publicId: "store/products/x" }]],
+    ["a record with no secureUrl", [{ publicId: "mimora/store/products/x" }]],
     ["a string", ["https://evil.example/x.png"]],
-    ["more than 20 images", Array.from({ length: 21 }, (_, i) => image(`store/products/n${i}`))],
+    ["more than 20 images", Array.from({ length: 21 }, (_, i) => image(`mimora/store/products/n${i}`))],
   ])("refuses %s with 400 and changes nothing", async (_label, images) => {
     expect((await put(images)).status).toBe(400);
     expect((await ProductModel.findById(productId).lean())?.images).toHaveLength(2);

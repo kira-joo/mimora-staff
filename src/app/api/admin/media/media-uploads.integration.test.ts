@@ -53,9 +53,9 @@ const upload = (handler: RouteHandler, path: string, form: FormData, caller = ow
 
 describe("catalog image uploads", () => {
   it.each([
-    ["product", postProduct, "/api/admin/media/product-images", "store/products"],
-    ["category", postCategory, "/api/admin/media/category-images", "store/categories"],
-    ["collection", postCollection, "/api/admin/media/collection-images", "store/collections"],
+    ["product", postProduct, "/api/admin/media/product-images", "mimora/store/products"],
+    ["category", postCategory, "/api/admin/media/category-images", "mimora/store/categories"],
+    ["collection", postCollection, "/api/admin/media/collection-images", "mimora/store/collections"],
   ])("a %s image is stored in its own folder and answers the ImageAsset", async (_name, handler, path, folder) => {
     const response = await upload(handler, path, imageForm(makePng(300, 300)));
     expect(response.status).toBe(201);
@@ -112,7 +112,7 @@ describe("store-profile image uploads", () => {
   it("holds each slot to its own policy and answers the ImageAsset", async () => {
     const logo = await upload(postStoreProfile, "/api/admin/media/store-profile-images", imageForm(makePng(128, 128), { fields: { slot: "logo" } }));
     expect(logo.status).toBe(201);
-    expect(provider.uploads[0]?.folder).toBe("store/store-profile");
+    expect(provider.uploads[0]?.folder).toBe("mimora/store/store-profile");
 
     const favicon = await upload(postStoreProfile, "/api/admin/media/store-profile-images", imageForm(makePng(48, 48), { fields: { slot: "favicon" } }));
     expect(favicon.status).toBe(201);

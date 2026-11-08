@@ -56,7 +56,7 @@ REVALIDATE_SECRET=
 
 # ── Image and receipt uploads, Cloudinary — CAPABILITY, all three or none ──
 # Unset: catalog/brand image uploads and payment-receipt uploads (InstaPay, wallet and bank
-# transfer orders) answer 503 with a clear message. Public images go under the `store/` folder;
+# transfer orders) answer 503 with a clear message. Public images go under `mimora/store/`;
 # receipts are private assets fetched only through short-lived signed URLs. Use a Cloudinary
 # product environment dedicated to Mimora.
 # Cloudinary Console → Settings (gear) → API Keys / Product environment:
@@ -87,14 +87,6 @@ MAIL_REPLY_TO=
 # STOREFRONT_URL = mimora-client's public origin; BACKOFFICE_URL = this console's public origin.
 STOREFRONT_URL=
 BACKOFFICE_URL=
-
-# ── Scheduled jobs — CAPABILITY ───────────────────────────────────────
-# The unpaid-order sweep (every 15 min: cancels proof-required orders past their window, releases
-# stock) and the orphan-image sweep (daily). Both secrets unset: job routes answer 404; jobs are OFF.
-# [secret] On Vercel set CRON_SECRET (Vercel Cron sends it as a Bearer token).
-CRON_SECRET=
-# [secret] Any other scheduler: JOBS_SECRET, sent as the x-jobs-secret header (or Bearer).
-JOBS_SECRET=
 
 # ── Network trust — OPTIONAL ──────────────────────────────────────────
 # How many right-most X-Forwarded-For entries are infrastructure you control. Default 1.

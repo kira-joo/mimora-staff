@@ -54,18 +54,18 @@ async function seedProductWith(publicId: string) {
 
 describe("sweepOrphanImages", () => {
   it("destroys an old upload nothing references, and forgets it", async () => {
-    await pending("store/products/orphan", ago(30));
+    await pending("mimora/store/products/orphan", ago(30));
 
     const result = await sweepOrphanImages(NOW);
 
-    expect(result).toEqual({ examined: 1, kept: 0, destroyed: ["store/products/orphan"], failed: [] });
-    expect(provider.destroyed).toEqual(["store/products/orphan"]);
+    expect(result).toEqual({ examined: 1, kept: 0, destroyed: ["mimora/store/products/orphan"], failed: [] });
+    expect(provider.destroyed).toEqual(["mimora/store/products/orphan"]);
     expect(await pendingIds()).toEqual([]);
   });
 
   it("keeps an old upload a document references — and stops tracking it", async () => {
-    await seedProductWith("store/products/saved");
-    await pending("store/products/saved", ago(30));
+    await seedProductWith("mimora/store/products/saved");
+    await pending("mimora/store/products/saved", ago(30));
 
     const result = await sweepOrphanImages(NOW);
 
@@ -75,26 +75,26 @@ describe("sweepOrphanImages", () => {
   });
 
   it("leaves a young upload alone, destroying nothing and keeping the row", async () => {
-    await pending("store/products/young", ago(23));
+    await pending("mimora/store/products/young", ago(23));
 
     const result = await sweepOrphanImages(NOW);
 
     expect(result.examined).toBe(0);
     expect(provider.destroyed).toEqual([]);
-    expect(await pendingIds()).toEqual(["store/products/young"]);
+    expect(await pendingIds()).toEqual(["mimora/store/products/young"]);
   });
 
   it("handles all three at once", async () => {
-    await seedProductWith("store/products/saved");
-    await pending("store/products/saved", ago(48));
-    await pending("store/products/orphan", ago(25));
-    await pending("store/products/young", ago(1));
+    await seedProductWith("mimora/store/products/saved");
+    await pending("mimora/store/products/saved", ago(48));
+    await pending("mimora/store/products/orphan", ago(25));
+    await pending("mimora/store/products/young", ago(1));
 
     const result = await sweepOrphanImages(NOW);
 
-    expect(result.destroyed).toEqual(["store/products/orphan"]);
+    expect(result.destroyed).toEqual(["mimora/store/products/orphan"]);
     expect(result.kept).toBe(1);
-    expect(await pendingIds()).toEqual(["store/products/young"]);
+    expect(await pendingIds()).toEqual(["mimora/store/products/young"]);
   });
 
   it("never destroys an asset outside this application's namespace", async () => {
@@ -108,23 +108,23 @@ describe("sweepOrphanImages", () => {
   });
 
   it("a provider failure leaves the row for the next run and does not stop the others", async () => {
-    await pending("store/products/stuck", ago(40));
-    await pending("store/products/fine", ago(30));
-    provider.failFor.add("store/products/stuck");
+    await pending("mimora/store/products/stuck", ago(40));
+    await pending("mimora/store/products/fine", ago(30));
+    provider.failFor.add("mimora/store/products/stuck");
 
     const first = await sweepOrphanImages(NOW);
-    expect(first.failed).toEqual(["store/products/stuck"]);
-    expect(first.destroyed).toEqual(["store/products/fine"]);
-    expect(await pendingIds()).toEqual(["store/products/stuck"]);
+    expect(first.failed).toEqual(["mimora/store/products/stuck"]);
+    expect(first.destroyed).toEqual(["mimora/store/products/fine"]);
+    expect(await pendingIds()).toEqual(["mimora/store/products/stuck"]);
 
     provider.failFor.clear();
     const second = await sweepOrphanImages(NOW);
-    expect(second.destroyed).toEqual(["store/products/stuck"]);
+    expect(second.destroyed).toEqual(["mimora/store/products/stuck"]);
     expect(await pendingIds()).toEqual([]);
   });
 
   it("is idempotent: a second run has nothing to do", async () => {
-    await pending("store/products/orphan", ago(30));
+    await pending("mimora/store/products/orphan", ago(30));
     await sweepOrphanImages(NOW);
     provider.destroyed.length = 0;
 
@@ -133,13 +133,13 @@ describe("sweepOrphanImages", () => {
   });
 
   it("works through a backlog in batches, oldest first", async () => {
-    await pending("store/products/a", ago(50));
-    await pending("store/products/b", ago(40));
-    await pending("store/products/c", ago(30));
+    await pending("mimora/store/products/a", ago(50));
+    await pending("mimora/store/products/b", ago(40));
+    await pending("mimora/store/products/c", ago(30));
 
     const first = await sweepOrphanImages(NOW, { batchSize: 2 });
-    expect(first.destroyed).toEqual(["store/products/a", "store/products/b"]);
+    expect(first.destroyed).toEqual(["mimora/store/products/a", "mimora/store/products/b"]);
     const second = await sweepOrphanImages(NOW, { batchSize: 2 });
-    expect(second.destroyed).toEqual(["store/products/c"]);
+    expect(second.destroyed).toEqual(["mimora/store/products/c"]);
   });
 });

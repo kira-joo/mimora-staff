@@ -111,36 +111,36 @@ describe("Admin Collections", () => {
       const plain = await createCollection({ ...BASE, slug: "plain" });
       expect(plain.icon).toBeUndefined();
 
-      const withIcon = await createCollection({ ...BASE, slug: "birthdays", image: asset("store/collections/photo"), icon: asset("store/collections/cake") });
+      const withIcon = await createCollection({ ...BASE, slug: "birthdays", image: asset("mimora/store/collections/photo"), icon: asset("mimora/store/collections/cake") });
       const stored = await CollectionModel.findById(withIcon._id).lean();
-      expect(stored?.icon).toMatchObject({ publicId: "store/collections/cake", width: 256, height: 256 });
-      expect(stored?.image).toMatchObject({ publicId: "store/collections/photo" });
+      expect(stored?.icon).toMatchObject({ publicId: "mimora/store/collections/cake", width: 256, height: 256 });
+      expect(stored?.image).toMatchObject({ publicId: "mimora/store/collections/photo" });
     });
 
     it("is set and replaced on update, and leaving it out of an update leaves it as it was", async () => {
       const created = await createCollection({ ...BASE, slug: "for-her" });
-      await updateCollection(created._id.toString(), { icon: asset("store/collections/flower") });
-      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower");
+      await updateCollection(created._id.toString(), { icon: asset("mimora/store/collections/flower") });
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("mimora/store/collections/flower");
 
       await updateCollection(created._id.toString(), { name: { ar: "لها", en: "For her" } });
-      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower");
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("mimora/store/collections/flower");
 
-      await updateCollection(created._id.toString(), { icon: asset("store/collections/flower-2") });
-      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("store/collections/flower-2");
+      await updateCollection(created._id.toString(), { icon: asset("mimora/store/collections/flower-2") });
+      expect((await CollectionModel.findById(created._id).lean())?.icon?.publicId).toBe("mimora/store/collections/flower-2");
     });
 
     it("null removes the icon without touching the image", async () => {
-      const created = await createCollection({ ...BASE, slug: "bestie", image: asset("store/collections/photo-b"), icon: asset("store/collections/hands") });
+      const created = await createCollection({ ...BASE, slug: "bestie", image: asset("mimora/store/collections/photo-b"), icon: asset("mimora/store/collections/hands") });
       await updateCollection(created._id.toString(), { icon: null });
       const stored = await CollectionModel.findById(created._id).lean();
       expect(stored).not.toHaveProperty("icon");
-      expect(stored?.image?.publicId).toBe("store/collections/photo-b");
+      expect(stored?.image?.publicId).toBe("mimora/store/collections/photo-b");
     });
 
     it("counts as a reference, so an icon is never destroyed while a collection still shows it", async () => {
-      await createCollection({ ...BASE, slug: "yourself", icon: asset("store/collections/sparkles") });
-      expect(await isImageReferenced("store/collections/sparkles")).toBe(true);
-      expect(await isImageReferenced("store/collections/nobody")).toBe(false);
+      await createCollection({ ...BASE, slug: "yourself", icon: asset("mimora/store/collections/sparkles") });
+      expect(await isImageReferenced("mimora/store/collections/sparkles")).toBe(true);
+      expect(await isImageReferenced("mimora/store/collections/nobody")).toBe(false);
     });
   });
 

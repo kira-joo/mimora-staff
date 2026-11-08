@@ -58,14 +58,6 @@ export async function register(): Promise<void> {
     log(`[uploads] ${missingStorage.join(", ")} not set — receipt uploads (every transfer-type payment) and catalog image uploads will FAIL until they are.`);
   }
 
-  // Scheduled jobs (the unpaid-order sweep) are switched on by one shared secret. Unset, the job route answers 404 to
-  // everyone — a configured-OFF capability that looks exactly like a working scheduler unless it says so here.
-  const { jobsSecretStatus } = await import("./server/core/jobs/jobs-secret");
-  const jobs = jobsSecretStatus(process.env);
-  if (jobs.state !== "configured") {
-    (process.env.NODE_ENV === "production" ? console.error : console.warn)(`[jobs] ${jobs.message}`);
-  }
-
   const { storePhoneCountryCode } = await import("./server/core/config/store-phone-country");
   const phoneCountryCode = storePhoneCountryCode();
   if (phoneCountryCode) {

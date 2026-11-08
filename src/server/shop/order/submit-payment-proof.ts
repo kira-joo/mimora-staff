@@ -6,6 +6,7 @@ import { appendOrderTimelineEntry } from "../../commerce/order-timeline";
 import { orderRepository, paymentProofRepository, paymentSettingsRepository } from "../../core/repositories";
 import { assertPaymentTransition, canTransitionPayment, timelineEventForPaymentStatus } from "../../engines/order-state/order-state-machine";
 import { privateAssets } from "../../core/assets/asset-providers";
+import { CLOUDINARY_ROOT } from "../../admin/media/media-targets";
 import { orderOwnerFilter, type OrderOwner } from "./order-access";
 import type { PaymentProofSubmissionView } from "./order.types";
 
@@ -66,7 +67,7 @@ export async function submitPaymentProof(input: SubmitPaymentProofInput): Promis
   }
 
   // External I/O before the transaction — see this function's own doc comment.
-  const uploaded = await privateAssets().upload(file.buffer, { folder: `payment-proofs/${order.orderNumber}` });
+  const uploaded = await privateAssets().upload(file.buffer, { folder: `${CLOUDINARY_ROOT}/payment-proofs/orders/${order.orderNumber}` });
 
   return withTransaction(async (tx) => {
     tx.onAbort(async () => {

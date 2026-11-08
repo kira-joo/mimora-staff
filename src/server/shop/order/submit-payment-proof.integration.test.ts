@@ -91,6 +91,7 @@ describe("submitPaymentProof", () => {
 
     expect(result.paymentStatus).toBe("SUBMITTED");
     expect(upload).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledWith(expect.anything(), { folder: `mimora/payment-proofs/orders/${order.orderNumber}` });
 
     const proofs = await PaymentProofModel.find({ orderId: order._id }).lean();
     expect(proofs).toHaveLength(1);

@@ -1,6 +1,5 @@
 import { Decimal } from "decimal.js";
 import mongoose from "mongoose";
-import { NextRequest } from "next/server";
 import { toMoney } from "@kira-joo/toolkit-common";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { connectToDatabase } from "src/server/core/db/connect";
@@ -27,7 +26,7 @@ import { callShopRoute, type ShopRouteHandler } from "./shop/test-support/shop-r
  *   place order (shop)            -> PRODUCTS            refused placement      -> none
  *   cancel order (shop)           -> PRODUCTS
  *   status -> CANCELLED (admin)   -> PRODUCTS            any other transition   -> none
- *   expire-unpaid (admin + job)   -> PRODUCTS only when it cancelled something
+ *   expire-unpaid (admin)         -> PRODUCTS only when it cancelled something
  */
 vi.mock("next/headers", async () => {
   const { harnessCookieJar } = await import("./admin/test-support/admin-route-harness");
@@ -43,12 +42,7 @@ const placeOrder = (await import("./shop/orders/route")).POST as ShopRouteHandle
 const customerCancel = (await import("./shop/orders/[orderNumber]/cancel/route")).POST as ShopRouteHandler;
 const adminStatus = (await import("./admin/orders/[id]/status/route")).PUT as RouteHandler;
 const adminExpire = (await import("./admin/orders/expire-unpaid/route")).POST as RouteHandler;
-const jobRoutes = await import("./internal/jobs/expire-unpaid-orders/route");
-const jobPost = jobRoutes.POST as RouteHandler;
-const jobGet = jobRoutes.GET as RouteHandler;
 
-const JOBS_SECRET = "integration-test-jobs-secret-0123456789";
-const originalJobsSecret = process.env.JOBS_SECRET;
 const realFetch = globalThis.fetch;
 const revalidations: Array<{ tags: string[] }> = [];
 let owner: AdminCaller;
@@ -83,7 +77,6 @@ beforeEach(async () => {
   revalidations.length = 0;
   process.env.STOREFRONT_REVALIDATE_URL = "http://storefront.test/api/revalidate";
   process.env.REVALIDATE_SECRET = "test-revalidate-secret";
-  process.env.JOBS_SECRET = JOBS_SECRET;
   vi.stubGlobal("fetch", async (url: string | URL | Request, init?: RequestInit) => {
     if (String(url).startsWith("http://storefront.test/")) {
       revalidations.push(JSON.parse(String(init?.body)));
@@ -94,8 +87,6 @@ beforeEach(async () => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
-  if (originalJobsSecret === undefined) delete process.env.JOBS_SECRET;
-  else process.env.JOBS_SECRET = originalJobsSecret;
 });
 
 /** Revalidation is published after the response is built; give a would-be (wrong) publish time to land before asserting none. */
@@ -222,8 +213,6 @@ describe("the unpaid-order sweep revalidates only when it cancelled something", 
       timeline: [{ type: "ORDER_PLACED", at: new Date(), actorType: "CUSTOMER" }],
     });
   }
-  const jobRequest = (method: "GET" | "POST") => new NextRequest("http://localhost/api/internal/jobs/expire-unpaid-orders", { method, headers: { authorization: `Bearer ${JOBS_SECRET}` } });
-  const context = { params: Promise.resolve({}) };
 
   it("admin sweep that cancelled an order declares PRODUCTS", async () => {
     await seedExpiredOrder();
@@ -241,19 +230,14 @@ describe("the unpaid-order sweep revalidates only when it cancelled something", 
     expect(revalidations).toEqual([]);
   });
 
-  it.each([
-    ["POST", jobPost],
-    ["GET", jobGet],
-  ] as const)("scheduled job (%s) that cancelled an order declares PRODUCTS; a second run declares nothing", async (method, handler) => {
+  it("admin sweep run twice: the second run cancels nothing and declares nothing", async () => {
     await seedExpiredOrder();
-
-    const first = await handler(jobRequest(method), context);
+    const first = await owner.call(adminExpire, "/api/admin/orders/expire-unpaid", { method: "POST" });
     expect((await first.json()).cancelled).toHaveLength(1);
     await vi.waitFor(() => expect(revalidations).toHaveLength(1));
-    expect(publishedTags()).toEqual([["PRODUCTS"]]);
 
     revalidations.length = 0;
-    const second = await handler(jobRequest(method), context);
+    const second = await owner.call(adminExpire, "/api/admin/orders/expire-unpaid", { method: "POST" });
     expect((await second.json()).cancelled).toEqual([]);
     await settle();
     expect(revalidations).toEqual([]);

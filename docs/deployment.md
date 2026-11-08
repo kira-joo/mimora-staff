@@ -30,9 +30,8 @@ which is best-effort by design.
 Vercel is the documented primary target, but nothing here requires it: `npm ci && npm run build && npm run start`
 runs the whole application on any Node host (a VM, a container, Railway, Render, Fly). What differs elsewhere:
 
-- **Scheduled jobs.** `vercel.json`'s crons are Vercel-only. Elsewhere, call `POST /api/internal/jobs/expire-unpaid-orders`
-  (every 15 minutes) and `POST /api/internal/jobs/sweep-orphan-images` (daily) from the platform's scheduler (or plain
-  `cron` + `curl`) with the header `x-jobs-secret: <JOBS_SECRET>`.
+- **No scheduled jobs.** Nothing runs on a timer, on Vercel or anywhere else (see `vercel.json` below), so there is no
+  scheduler to set up.
 - **TLS.** Cookies are `Secure` outside development, so the app must be reached over https (or `localhost`).
   Terminate TLS at the host or a proxy.
 - **Client IP.** Set `CLIENT_IP_TRUSTED_HOPS` to the number of proxies you control (see "Client IP" below).
@@ -60,35 +59,21 @@ docs before relying on it). Never commit the token, and never paste it into a tr
 ## `vercel.json`
 
 ```json
-{ "framework": "nextjs",
-  "crons": [{ "path": "/api/internal/jobs/expire-unpaid-orders", "schedule": "*/15 * * * *" },
-            { "path": "/api/internal/jobs/sweep-orphan-images", "schedule": "17 3 * * *" }] }
+{ "$schema": "https://openapi.vercel.sh/vercel.json", "framework": "nextjs" }
 ```
 
-**The second cron, `sweep-orphan-images` (daily), destroys abandoned image uploads.** Catalog images upload before the
-record that shows them is saved, so an upload nobody saves is an orphan file in Cloudinary. Cloudinary's provider
-contract here has no "list assets" call, so each public upload is recorded in a `PendingUpload` collection when it
-happens, and this job destroys the ones older than 24 hours that no product, variant, category, collection, store
-profile or page references (referenced ones are just forgotten, never destroyed). It uses the same guard and secret as
-the sweep below, only touches the `store/` namespace, and is idempotent. Uploads made before this shipped are not
-tracked and are not swept.
+**No Vercel Cron Jobs — deliberately** (owner decision; it also keeps the project within the free Hobby plan, which
+allows a cron at most once a day). The two maintenance sweeps are staff actions instead:
 
-**The cron.** It runs the unpaid-order sweep: orders on a payment method that requires proof and has an
-auto-cancel window (`autoCancelMinutes`) are cancelled once the window passes. Two facts shape the setup:
-
-1. **Vercel Cron only issues `GET`**, and sends `Authorization: Bearer $CRON_SECRET` when the project defines a
-   `CRON_SECRET` variable. So the route answers both `GET` (for Vercel) and `POST` (for everything else), both
-   behind the same guard: `JOBS_SECRET` **or** `CRON_SECRET` (constant-time compare; `404`, never `401`, for a
-   wrong or missing secret; `404` for everyone when neither is set). **On Vercel set `CRON_SECRET` only.** There
-   is no second value to keep in step — a mismatch would answer `404` forever and look exactly like "jobs OFF".
-2. **Schedule `*/15 * * * *` (every 15 minutes).** Auto-cancel windows are configured in minutes, so a quarter
-   hour bounds how long an expired order lingers, and the sweep is idempotent (a cancelled order no longer matches),
-   so overlapping or repeated runs are harmless. **Check the plan:** Vercel limits how often a cron may run
-   per plan (a free Hobby project is limited to daily schedules, at the time of writing — confirm in the
-   dashboard). If the plan rejects `*/15`, use `0 * * * *` or a daily schedule and accept slower cancellation, or
-   call the `POST` route from another scheduler.
-
-The job runs against **Production only** (Vercel crons do not run on previews).
+- **Cancel unpaid orders** (Orders page; `POST /api/admin/orders/expire-unpaid`, `Order.transition`). Cancels orders
+  still awaiting payment past their payment method's auto-cancel window (`autoCancelMinutes`, Settings → Payments) and
+  releases their stock. A method with no window is never touched. Idempotent: a second press cancels nothing new.
+- **Clean up unused images** (Catalog → Bulk import; `POST /api/admin/media/sweep-orphans`, `Catalog.publish`).
+  Catalog images upload before the record that shows them is saved, so an upload nobody saves is an orphan file in
+  Cloudinary. Each public upload is recorded in a `PendingUpload` collection; the action permanently deletes the ones
+  older than 24 hours that no product, variant, category, collection, store profile or page references (referenced
+  ones are just forgotten, never destroyed), oldest first, one batch per press. It only ever deletes under
+  `mimora/store/`, answers Checked / Kept / Deleted / Failed counts, and is idempotent.
 
 ## Environment variables
 
@@ -111,8 +96,6 @@ file.** Tiers: *required* stops a production boot; *capability* switches a featu
 | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | capability | key and secret: **yes** | This store's own Cloudinary environment. All three or none. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `MAIL_REPLY_TO` | capability | `SMTP_PASS`: **yes** | Per `configuration.md` → Outbound email. |
 | `STOREFRONT_URL`, `BACKOFFICE_URL` | capability (required once mail is set) | no | The two public origins, https. |
-| `CRON_SECRET` | capability | **yes** | `openssl rand -base64 48`. Vercel sends it to the cron. |
-| `JOBS_SECRET` | capability | **yes** | Only on non-Vercel hosts. |
 | `CUSTOMER_ACCESS_TOKEN_TTL`, `CLIENT_IP_TRUSTED_HOPS`, `TRUST_X_REAL_IP` | optional | no | See `configuration.md`. |
 
 `NODE_ENV` and `NEXT_RUNTIME` are set by Next; do not set them.
@@ -272,15 +255,15 @@ Every step is an external action for the owner; none has been done.
 2. Create a Cloudinary product environment for this store and a non-root API key.
 3. Choose an SMTP provider; verify the sender domain/address and publish SPF, DKIM and DMARC.
 4. Create the Vercel project from this repository (framework Next.js, Node 24); add the private-registry credential.
-5. Generate secrets: `STAFF_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, `REVALIDATE_SECRET`, `CRON_SECRET` — four different
+5. Generate secrets: `STAFF_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, `REVALIDATE_SECRET` — three different
    `openssl rand -base64 48` values. Store them in Vercel, not in git.
 6. Choose the store's `STORE_ID` and adopt the (empty) database with `scripts/admin/adopt-store-identity.mjs`
    (**Store identity**, dry run first). Set `STORE_ID` here and, identically, on the storefront.
-7. Set every *required* variable, then the capabilities (revalidation, Cloudinary, SMTP and both URLs, `CRON_SECRET`)
+7. Set every *required* variable, then the capabilities (revalidation, Cloudinary, SMTP and both URLs)
    for **Production**; give Preview its own database name and secrets.
 8. Attach the domain (`api.example.com`, a placeholder) and let TLS provision.
 9. Deploy. Read the boot log: a missing or invalid required variable names itself and the process exits; every
-   capability left OFF prints one line (`[revalidation]`, `[mail]`, `[uploads]`, `[jobs]`, `[phone]`).
+   capability left OFF prints one line (`[revalidation]`, `[mail]`, `[uploads]`, `[phone]`).
 10. Create the first Owner (above).
 11. Deploy the storefront with the same `STORE_ID`, `REVALIDATE_SECRET`, `STAFF_API_URL` and `STORE_TIMEZONE`; then set
     `STOREFRONT_REVALIDATE_URL`/`STOREFRONT_URL` here and redeploy.
@@ -299,10 +282,10 @@ Replace `api.example.com` / `shop.example.com` with the real origins. Tick each;
 - [ ] Sign in as the Owner at `/login`; the cookies are `Secure; HttpOnly; SameSite=Lax`; a reload stays signed in; sign out, and the cookies are gone.
 - [ ] `curl -s https://api.example.com/api/storefront/identity` → `{"storeId":"<this store's STORE_ID>"}`, and the storefront's own `STORE_ID` is the same.
 - [ ] `curl -s https://api.example.com/api/storefront/store-profile` → the store profile JSON (public surface works, DB reachable).
-- [ ] Boot log shows no `[config]`, `[revalidation]`, `[mail]`, `[uploads]` or `[jobs]` line you did not intend.
+- [ ] Boot log shows no `[config]`, `[revalidation]`, `[mail]` or `[uploads]` line you did not intend.
 - [ ] Edit a price in the console; the storefront page shows it within seconds (invalidation reached `204`, not `404`).
-- [ ] `curl -i -X POST https://api.example.com/api/internal/jobs/expire-unpaid-orders` → `404` (no secret). Then, with the secret: `curl -i -H "Authorization: Bearer $CRON_SECRET" https://api.example.com/api/internal/jobs/expire-unpaid-orders` → `200` with a result body. Check the Vercel Cron page lists the job and its first run succeeded.
-- [ ] Same for `curl -i -X POST https://api.example.com/api/internal/jobs/sweep-orphan-images` → `404` without the secret, `200` with `{ examined, kept, destroyed, failed }` with it; the Vercel Cron page lists it (daily).
+- [ ] The Vercel project's Cron Jobs page lists no jobs.
+- [ ] As the Owner, press **Cancel unpaid orders** (Orders) and **Clean up unused images** (Catalog → Bulk import); each confirms first and reports its result.
 - [ ] Place a test order through the storefront; with email on and `ORDER_PLACED` switched on in Settings → Notifications, the confirmation arrives, and the placement response was not delayed by it.
 - [ ] Upload a receipt on a transfer order; staff can open it via the signed link, and the plain Cloudinary URL does not serve it.
 - [ ] Subscribe an address from the footer; the confirmation email arrives; the link confirms; the console Newsletter screen shows *Subscribed*.
@@ -312,7 +295,6 @@ Replace `api.example.com` / `shop.example.com` with the real origins. Tick each;
 
 ## Not verified (because it can only be verified deployed)
 
-- Vercel Cron actually invoking the `GET` with the Bearer header, and the plan's frequency limit for `*/15`.
 - The private-registry install on Vercel.
 - Cookie `Secure`/`SameSite` behaviour across the real pair of domains.
 - Whether the storefront's forwarded client address survives Vercel's proxy (expected: it does not).
