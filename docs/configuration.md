@@ -33,8 +33,6 @@ otherwise.
 | `CLOUDINARY_API_KEY` | yes for transfer payments | See below (announced). |
 | `CLOUDINARY_API_SECRET` | yes for transfer payments | See below (announced). Server-only, never `NEXT_PUBLIC_`. |
 | `CUSTOMER_ACCESS_TOKEN_TTL` | no | Overrides the customer access-token lifetime: a number plus `s`/`m`/`h`/`d`. |
-| `JOBS_SECRET` | capability, ≥ 32 chars when set | Authenticates `/api/internal/jobs/*` (`x-jobs-secret` header or `Authorization: Bearer`). Unset *and* `CRON_SECRET` unset: scheduled jobs OFF (announced). |
-| `CRON_SECRET` | capability, ≥ 32 chars when set | What Vercel Cron sends as a Bearer token. Accepted by the jobs route exactly like `JOBS_SECRET`; on Vercel set this one only. |
 | `CLIENT_IP_TRUSTED_HOPS` | no | How many right-most `X-Forwarded-For` entries are infrastructure you control (default `1`). Read by the rate limiter **and the audit log's IP**. |
 | `TRUST_X_REAL_IP` | no | `1` only behind a proxy that overwrites `X-Real-IP`. |
 | `SMTP_HOST` | yes, for email | SMTP relay hostname, e.g. `smtp.provider.example`. See "Outbound email" below (announced). |

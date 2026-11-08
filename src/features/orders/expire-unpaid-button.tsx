@@ -14,8 +14,8 @@ import { expireUnpaidSummary } from "./expire-unpaid-summary";
 
 /**
  * Runs the unpaid-order sweep now: every order still awaiting payment past its method's "auto-cancel after" is
- * cancelled and the stock it held goes back. The same sweep a scheduler runs on a timer (`JOBS_SECRET`); this is the
- * manual trigger. Needs Order.transition — it is a bulk cancellation — and the API checks that again.
+ * cancelled and the stock it held goes back. Nothing runs this sweep on a schedule; this button is its only trigger.
+ * Needs Order.transition — it is a bulk cancellation — and the API checks that again.
  */
 export function ExpireUnpaidButton() {
   const can = usePermission();

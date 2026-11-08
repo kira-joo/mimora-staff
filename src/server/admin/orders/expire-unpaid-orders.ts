@@ -40,8 +40,8 @@ export interface ExpireUnpaidOrdersResult {
  *   arrives mid-sweep is skipped, not cancelled.
  * - **`now` is a parameter**, so the boundary is testable and a sweep is reproducible.
  *
- * Called by `POST /api/admin/orders/expire-unpaid` (a staff action) and `POST /api/internal/jobs/expire-unpaid-orders`
- * (a scheduler). The expiry never refunds anything: an order awaiting payment has no money to return.
+ * Called by `POST /api/admin/orders/expire-unpaid`, the Orders page's "Cancel unpaid orders" action. Nothing runs it
+ * on a schedule. The expiry never refunds anything: an order awaiting payment has no money to return.
  */
 export async function expireUnpaidOrders(now: Date): Promise<ExpireUnpaidOrdersResult> {
   const result: ExpireUnpaidOrdersResult = { cancelled: [], skipped: 0, failed: [], methodsSwept: [] };

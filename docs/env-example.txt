@@ -88,14 +88,6 @@ MAIL_REPLY_TO=
 STOREFRONT_URL=
 BACKOFFICE_URL=
 
-# ── Scheduled jobs — CAPABILITY ───────────────────────────────────────
-# The unpaid-order sweep (every 15 min: cancels proof-required orders past their window, releases
-# stock) and the orphan-image sweep (daily). Both secrets unset: job routes answer 404; jobs are OFF.
-# [secret] On Vercel set CRON_SECRET (Vercel Cron sends it as a Bearer token).
-CRON_SECRET=
-# [secret] Any other scheduler: JOBS_SECRET, sent as the x-jobs-secret header (or Bearer).
-JOBS_SECRET=
-
 # ── Network trust — OPTIONAL ──────────────────────────────────────────
 # How many right-most X-Forwarded-For entries are infrastructure you control. Default 1.
 CLIENT_IP_TRUSTED_HOPS=

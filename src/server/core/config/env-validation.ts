@@ -22,9 +22,9 @@ import { STORE_ID_PATTERN, STORE_ID_RULE } from "../db/store-identity";
  *    one stops the process (`assertProductionEnvironment`); the message lists
  *    NAMES and reasons, never a value.
  *  - **capability** — switches a feature on (cache invalidation, uploads, email,
- *    scheduled jobs, phone normalisation). Absent is a legitimate "OFF" and is
+ *    phone normalisation). Absent is a legitimate "OFF" and is
  *    announced by the module that owns the capability (`revalidationConfigStatus`,
- *    `mailConfigStatus`, `missingCloudinaryVariables`, `jobsSecretStatus`, and the
+ *    `mailConfigStatus`, `missingCloudinaryVariables`, and the
  *    phone line in `instrumentation.ts`) — those announcements are unchanged. What
  *    THIS module adds is the case they cannot see: a capability variable that is
  *    SET but unusable (a weak secret, a non-https URL in production, a malformed
@@ -176,9 +176,6 @@ export const ENV_VARS: readonly EnvVarSpec[] = [
   { name: "STOREFRONT_URL", requirement: "capability", secret: false, description: "The storefront's public origin; links in customer emails are built on it. Required once mail is set.", validate: httpUrl },
   { name: "BACKOFFICE_URL", requirement: "capability", secret: false, description: "This console's public origin; the staff invitation link is built on it. Required once mail is set.", validate: httpUrl },
 
-  // Scheduled jobs
-  { name: "JOBS_SECRET", requirement: "capability", secret: true, description: "Authenticates /api/internal/jobs/* (x-jobs-secret or Bearer). Unset and CRON_SECRET unset: jobs are OFF.", validate: secret },
-  { name: "CRON_SECRET", requirement: "capability", secret: true, description: "Vercel Cron sends this as a Bearer token. Accepted by the jobs route exactly like JOBS_SECRET.", validate: secret },
 
   // Network trust
   { name: "CLIENT_IP_TRUSTED_HOPS", requirement: "optional", secret: false, description: "How many right-most X-Forwarded-For entries are infrastructure you control (default 1).", validate: (value) => (/^[1-9]\d{0,1}$/.test(value) ? null : "must be a whole number from 1 to 99") },
@@ -206,7 +203,7 @@ export interface EnvironmentReport {
 }
 
 /** Values that must be pairwise different: two audiences never share a secret. */
-const DISTINCT_SECRETS: ReadonlyArray<readonly string[]> = [["STAFF_JWT_SECRET"], ["CUSTOMER_JWT_SECRET"], ["REVALIDATE_SECRET"], ["JOBS_SECRET", "CRON_SECRET"]];
+const DISTINCT_SECRETS: ReadonlyArray<readonly string[]> = [["STAFF_JWT_SECRET"], ["CUSTOMER_JWT_SECRET"], ["REVALIDATE_SECRET"]];
 
 /**
  * Classifies an environment. Values never appear in the report: every message is

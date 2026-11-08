@@ -76,7 +76,7 @@ function MethodRow({ form, index, disabled, onRemove }: { form: UseFormReturn<Fo
           control={form.control}
           name={`${p}.autoCancelMinutes`}
           label="Cancel unpaid orders after (minutes)"
-          description="Blank means never."
+          description={'Applies when staff run "Cancel unpaid orders" on the Orders page. Blank means never.'}
           dir="ltr"
           inputMode="numeric"
           controlClassName="st-figure"

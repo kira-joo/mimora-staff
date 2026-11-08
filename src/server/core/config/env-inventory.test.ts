@@ -52,7 +52,7 @@ function variablesRead(): Map<string, string> {
 describe("environment inventory", () => {
   it("finds the reads it is supposed to find (a scanner that matches nothing proves nothing)", () => {
     const read = variablesRead();
-    for (const name of ["MONGODB_URI", "STAFF_JWT_SECRET", "CUSTOMER_JWT_SECRET", "STORE_TIMEZONE", "JOBS_SECRET", "SMTP_HOST", "CLOUDINARY_API_KEY", "CLIENT_IP_TRUSTED_HOPS"]) {
+    for (const name of ["MONGODB_URI", "STAFF_JWT_SECRET", "CUSTOMER_JWT_SECRET", "STORE_TIMEZONE", "REVALIDATE_SECRET", "SMTP_HOST", "CLOUDINARY_API_KEY", "CLIENT_IP_TRUSTED_HOPS"]) {
       expect(read.has(name), name).toBe(true);
     }
   });
