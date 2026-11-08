@@ -65,7 +65,8 @@ const optionalNumber = (value: string | number | undefined) => {
 export function variantBody(values: VariantFormValues): VariantInput {
   return {
     sku: values.sku.trim(),
-    optionValues: values.optionValues.map((option) => ({ key: option.key, value: option.value.trim() })),
+    // A product without options renders no option field, so the form drops `optionValues` entirely — absent means none.
+    optionValues: (values.optionValues ?? []).map((option) => ({ key: option.key, value: option.value.trim() })),
     price: values.price.trim(),
     compareAtPrice: optional(values.compareAtPrice),
     costPrice: optional(values.costPrice),

@@ -61,6 +61,16 @@ describe("variantBody", () => {
     expect(body.compareAtPrice).toBeUndefined();
   });
 
+  it("a product without options: the form drops optionValues entirely, and create and edit still build a body with none", () => {
+    // What CustomForm hands over when no option field is rendered — every Mimora product today.
+    const submitted: Partial<Parameters<typeof variantBody>[0]> = { ...mapVariantToFormValues([], undefined), sku: "MIM-MUG-1", price: "120.00", stock: "4" };
+    delete submitted.optionValues;
+    const values = submitted as Parameters<typeof variantBody>[0];
+
+    expect(variantBody(values).optionValues).toEqual([]);
+    expect(createVariantBody("p1", values)).toMatchObject({ productId: "p1", sku: "MIM-MUG-1", price: "120.00", stock: 4, optionValues: [] });
+  });
+
   it("never sends stock on an update — stock moves through inventory adjustments", () => {
     expect(variantBody(mapVariantToFormValues(axes, variant))).not.toHaveProperty("stock");
   });
