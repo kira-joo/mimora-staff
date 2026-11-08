@@ -5,7 +5,7 @@ import { CustomButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { useEndpointUpload } from "@kira-joo/frontend-toolkit-tailwind/upload";
 import type { ImageAsset } from "@kira-joo/toolkit-common";
 import { ArrowLeft, ArrowRight, ImagePlus, Trash2 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { uploadProductImageEndpoint } from "src/api/media.endpoints";
 import { updateProductEndpoint, type Product } from "src/api/products.endpoints";
 import { AppPermission } from "src/common/authorization/authorization-registry";
@@ -19,18 +19,30 @@ const POLICY = catalogMediaSpec("product").policy;
 
 /**
  * A product's gallery: upload several at once, put them in order (the first is the primary image on every listing),
- * remove. Edits are held here until "Save images", so a mis-click costs nothing; saving sends the whole ordered gallery.
+ * remove. Edits are held — by the product page, not here — until "Save images" or "Save product", so a mis-click
+ * costs nothing; either save sends the whole ordered gallery. Holding them on the page is what lets the product form's
+ * own save include them: a gallery kept only in here was dropped whenever the page reloaded after "Save product".
  * Removing an image also takes it out of any variant's picked images, and the stored file is deleted once the save has
  * committed (the server's doing — it never deletes anything that is still shown elsewhere).
  *
  * No alt text field: the stored image carries none, so the storefront names images by the product. That is a schema
  * limit, not a choice made here.
  */
-export function ProductImageManager({ product, onChanged }: { product: Product; onChanged: () => void }) {
+export function ProductImageManager({
+  product,
+  images,
+  onImagesChange: setImages,
+  onChanged,
+}: {
+  product: Product;
+  /** The gallery as edited and not yet saved — owned by the product page. */
+  images: ImageAsset[];
+  onImagesChange: Dispatch<SetStateAction<ImageAsset[]>>;
+  onChanged: () => void;
+}) {
   const can = usePermission();
   const canEdit = can(AppPermission.PRODUCT.UPDATE);
   const saved = product.images ?? [];
-  const [images, setImages] = useState<ImageAsset[]>(saved);
   const [problems, setProblems] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);

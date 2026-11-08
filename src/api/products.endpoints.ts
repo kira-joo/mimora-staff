@@ -62,7 +62,7 @@ export interface Product {
   updatedAt?: string;
 }
 
-/** `images` is managed by the product image manager (its own save), not by this form, so it is not part of this input. `lifecycle` changes through its own endpoint. */
+/** `images` is not a form field: the product page holds the gallery, and an edit sends it (from "Save images", or with "Save product" when it changed) through `updateProductEndpoint`. `lifecycle` changes through its own endpoint. */
 export interface ProductInput {
   name: LocalizedText;
   description: LocalizedText;
