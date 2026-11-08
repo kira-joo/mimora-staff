@@ -2,7 +2,7 @@
 
 import { RouteButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { FeatureTable } from "@kira-joo/frontend-toolkit-tailwind/table";
-import { Plus } from "lucide-react";
+import { Copy, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { listCategoriesEndpoint } from "src/api/categories.endpoints";
@@ -10,6 +10,7 @@ import { listProductsEndpoint, type ProductListItem } from "src/api/products.end
 import { AppPermission } from "src/common/authorization/authorization-registry";
 import { useStoreFormat } from "src/common/format/store-format";
 import { AppRoute } from "src/common/routes/app-route";
+import { usePermission } from "src/features/auth/use-permission";
 import { ProductLifecycleSignal } from "src/features/status/status-signal";
 import { LocalizedNameCell } from "../catalog-display";
 import { useCatalogOptions } from "../use-catalog-options";
@@ -22,6 +23,7 @@ import { priceRange } from "./product-display";
  */
 export function ProductsTable() {
   const router = useRouter();
+  const can = usePermission();
   const format = useStoreFormat();
   const categories = useCatalogOptions(listCategoriesEndpoint);
   const categoryName = useMemo(() => new Map(categories.options.map((option) => [option.value, option.label])), [categories.options]);
@@ -49,6 +51,10 @@ export function ProductsTable() {
         </RouteButton>
       }
       onRowClick={(row) => router.push(AppRoute.PRODUCT(row._id))}
+      rowActions={[
+        // Opens New product pre-filled from this one — nothing is created until staff press "Create draft".
+        { label: "Clone", icon: Copy, hidden: () => !can(AppPermission.PRODUCT.CREATE), onClick: (row) => router.push(AppRoute.PRODUCT_CLONE(row._id)) },
+      ]}
       emptyMessage="No products yet"
       emptyDescription="Create a product, then add its variants — each variant carries its own price and stock."
       columns={[

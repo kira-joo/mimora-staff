@@ -35,7 +35,7 @@ export const POST = createPostRoute({
       lifecycle: body.lifecycle,
       publishAt: body.publishAt ? new Date(body.publishAt) : undefined,
       order: body.order,
-    });
+    }, { onSlugTaken: "suffix" });
 
     return product;
   },

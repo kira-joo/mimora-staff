@@ -20,6 +20,8 @@ export const AppRoute = {
   BRAND: (id: string) => `/catalog/brands/${id}`,
   PRODUCTS: "/catalog/products",
   PRODUCT_NEW: "/catalog/products/new",
+  /** The New product page pre-filled from an existing product. */
+  PRODUCT_CLONE: (id: string) => `/catalog/products/new?from=${encodeURIComponent(id)}`,
   PRODUCT: (id: string) => `/catalog/products/${encodeURIComponent(id)}`,
   CATEGORIES: "/catalog/categories",
   CATEGORY_NEW: "/catalog/categories/new",
