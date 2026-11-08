@@ -45,7 +45,7 @@ import { ALL_MODELS } from "./model-registry";
  * request trigger it is how a deploy turns into an outage. Indexes get created
  * by a deploy step, and the application refuses to serve if they are missing.
  *
- * **This builds, then asserts**, for three reasons specific to where this
+ * **This builds what is missing, then asserts**, for three reasons specific to where this
  * product currently is:
  *
  * 1. Mongoose's own background build (`autoIndex`) is turned off in connect.ts so
@@ -67,33 +67,43 @@ import { ALL_MODELS } from "./model-registry";
  */
 export async function ensureIndexes(models: Model<never>[] = ALL_MODELS): Promise<void> {
   /*
-   * `Model.init()` resolves once the model's declared indexes are built. It is
-   * the promise Mongoose already created for its own background build, so
-   * awaiting it joins that work rather than duplicating it, and it memoises —
-   * a second call costs microseconds.
+   * Diff first, build only what is missing. Every cold start used to send one `createIndexes` per declared index —
+   * dozens of commands that changed nothing on an already-indexed database — and on a throughput-limited cluster
+   * those queued behind each other whenever several instances started at once. Now each model costs ONE listIndexes
+   * (`Model.diffIndexes()`), and a create is sent only for an index that is genuinely missing.
    *
-   * Failures are collected rather than thrown, because the most likely one is
-   * also the most important to report clearly: a unique index cannot be built
-   * over data that already contains duplicates. That is precisely the state
-   * this check exists to detect — it means the guarantee was already lost and
-   * the data needs reconciling before it can come back. Mongoose's own error
-   * for it says "Index build failed" and names a dup key, with nothing about
-   * what depended on that index.
+   * `diffIndexes` is Mongoose's own comparison (the one `syncIndexes()` uses): an index counts as present only when
+   * its key — field order and direction included — AND its `unique`, `sparse`, `partialFilterExpression`,
+   * `expireAfterSeconds` and `collation` match the declaration. Its `toDrop` half is deliberately ignored: nothing is
+   * ever dropped here. An index that exists with the same key but different options is therefore reported missing,
+   * and creating it fails with MongoDB's own conflict error — which refuses startup below instead of silently
+   * replacing a live index.
+   *
+   * `Model.init()` is awaited first because it is the promise Mongoose already holds for the model; with `autoCreate`
+   * and `autoIndex` off (connect.ts) it sends nothing, and it memoises.
+   *
+   * Failures are collected rather than thrown, because the most likely one is also the most important to report
+   * clearly: a unique index cannot be built over data that already contains duplicates. That is precisely the state
+   * this check exists to detect — the guarantee was already lost and the data needs reconciling first.
    */
-  const buildFailures = (
-    await Promise.all(
-      models.map(async (model) =>
-        model
-          .init()
-          // autoIndex is off (connect.ts), so init() builds nothing: build explicitly, after the identity check.
-          .then(() => model.createIndexes())
-          .then(() => [])
-          .catch((error: unknown) => [`${model.modelName}: index build failed — ${(error as Error).message}`])
-      )
-    )
-  ).flat();
+  const outcomes = await Promise.all(
+    models.map(async (model): Promise<string[]> => {
+      try {
+        await model.init();
+        const { toCreate } = await model.diffIndexes({ indexOptionsToCreate: true });
+        if (toCreate.length === 0) return [];
+        // Exactly the missing declarations, with their declared options, through Mongoose's own build path.
+        await model.createIndexes({ toCreate } as never);
+        // Created something: verify again, with the same strict comparison, before trusting it.
+        const { toCreate: stillMissing } = await model.diffIndexes({ indexOptionsToCreate: true });
+        return stillMissing.map((entry) => describeMissing(model, entry));
+      } catch (error) {
+        return [`${model.modelName}: index build failed — ${(error as Error).message}`];
+      }
+    })
+  );
 
-  const missing = [...buildFailures, ...(await Promise.all(models.map(findMissingIndexes))).flat()];
+  const missing = outcomes.flat();
 
   if (missing.length > 0) {
     throw new Error(
@@ -108,25 +118,8 @@ export async function ensureIndexes(models: Model<never>[] = ALL_MODELS): Promis
   }
 }
 
-/** Declared indexes with no counterpart in the database, described for the error. */
-async function findMissingIndexes(model: Model<never>): Promise<string[]> {
-  const built = await model.collection.indexes().catch(() => []);
-
-  return model.schema.indexes().flatMap(([keys, options]) => {
-    const declaredKey = JSON.stringify(keys);
-    const match = built.find((index) => JSON.stringify(index.key) === declaredKey);
-
-    if (!match) return [`${model.modelName}: no index on ${declaredKey}`];
-
-    /*
-     * An index that exists but is not unique is worse than one that is
-     * missing: it satisfies a existence check while enforcing nothing. Worth
-     * naming separately so the error says which of the two happened.
-     */
-    if (options?.unique && !match.unique) {
-      return [`${model.modelName}: index on ${declaredKey} exists but is NOT unique`];
-    }
-
-    return [];
-  });
+/** A declared index still missing after the build, described for the error. */
+function describeMissing(model: Model<never>, entry: unknown): string {
+  const [keys, options] = (Array.isArray(entry) ? entry : [entry, {}]) as [Record<string, unknown>, { unique?: boolean } | undefined];
+  return `${model.modelName}: no index on ${JSON.stringify(keys)}${options?.unique ? " (declared unique)" : ""} with the declared options`;
 }

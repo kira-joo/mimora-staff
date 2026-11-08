@@ -1,7 +1,7 @@
 /**
  * Every entity `createAuthorizationRegistry()` generates CRUD permissions
  * for. One key per real Mongoose model — adding an entity here and
- * re-running `syncPermissions()` (at boot, `src/instrumentation.ts`) is the
+ * re-running `reconcilePermissions()` (at boot, `src/instrumentation.ts`) is the
  * whole mechanism for extending admin permission coverage as later Phase 4
  * work adds routes for it.
  */

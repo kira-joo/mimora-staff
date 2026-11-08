@@ -29,7 +29,7 @@ export const AppPermission = authorization.permissions;
  * the power to refund a payment. No route checks any of these yet (Phase
  * 4A.5 builds no routes); declared now so Phase 4B's route work has the
  * vocabulary ready rather than inventing it ad hoc per batch, and so
- * `syncPermissions()` at boot creates the `Permission` documents a future
+ * `reconcilePermissions()` at boot creates the `Permission` documents a future
  * role can be granted before any route depends on them existing.
  */
 export const CustomPermission = {

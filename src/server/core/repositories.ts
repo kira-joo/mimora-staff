@@ -99,7 +99,7 @@ import type { InventorySettingsSchema } from "../fulfilment/inventory-settings.s
  *
  * A direct Model call is correct only for an operation the repository
  * cannot express — `bulkWrite`, `aggregate`, or a toolkit API that takes a
- * Model by design (`syncPermissions`).
+ * Model by design (`reconcilePermissions`).
  */
 export const staffUserRepository = createMongooseRepository<StaffUserSchema>({
   model: StaffUserModel,

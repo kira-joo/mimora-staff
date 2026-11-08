@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { syncPermissions } from "@kira-joo/backend-toolkit-mongoose";
 import {
   assertConfirmed,
   bootstrapOwner,
@@ -18,6 +17,7 @@ import {
 import { ALL_PERMISSION_DEFINITIONS } from "../../../common/authorization/authorization-registry";
 import { connectToDatabase } from "../../core/db/connect";
 import { PermissionModel, RoleModel } from "../../core/authorization/role.model";
+import { reconcilePermissions } from "../../core/authorization/reconcile-permissions";
 import { ActivityLogModel } from "../../core/activity-log.schema";
 import { STAFF_INVITE_TOKEN_TTL_MS } from "../../core/auth/staff-auth.constants";
 import { StaffUserModel } from "../../identity/staff-user.schema";
@@ -58,7 +58,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await Promise.all([StaffUserModel.deleteMany({}), ActivityLogModel.deleteMany({}), RoleModel.deleteMany({}), PermissionModel.deleteMany({}), mongoose.connection.db!.collection(LOCK_COLLECTION).deleteMany({})]);
   // Exactly what the backend does at boot (src/instrumentation.ts).
-  await syncPermissions({ model: PermissionModel, definitions: ALL_PERMISSION_DEFINITIONS });
+  await reconcilePermissions({ model: PermissionModel, definitions: ALL_PERMISSION_DEFINITIONS });
   await seedDefaultRoles();
 });
 afterAll(async () => {
