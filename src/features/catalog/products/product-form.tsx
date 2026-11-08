@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { CustomForm, FieldType, type FormSection } from "@kira-joo/frontend-toolkit-tailwind/forms";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { listBrandsEndpoint, type LocalizedText } from "src/api/brands.endpoints";
 import { listCollectionsEndpoint } from "src/api/collections.endpoints";
 import type { createProductEndpoint, updateProductEndpoint, OptionAxis, Product, ProductAttribute, ProductInput } from "src/api/products.endpoints";
@@ -17,6 +18,7 @@ import { NONE, useCatalogOptions } from "../use-catalog-options";
 import { useCategoryOptions } from "../categories/use-category-options";
 import { AttributesEditor } from "./attributes-editor";
 import { OptionAxesEditor } from "./option-axes-editor";
+import { autofillFromName, cloneProductValues, type ProductCloneValues } from "./product-autofill";
 import { attributesProblem, axesProblem, cleanAttributes, cleanAxes } from "./product-options";
 
 interface ProductFormValues {
@@ -49,7 +51,7 @@ function sections(lists: { categories: Option[]; brands: Option[]; sizeGuides: O
           type: FieldType.INPUT,
           name: "slug",
           label: "Slug",
-          description: "The product's address on the storefront. Must be unique.",
+          description: "The product's address on the storefront. Filled in from the English name; if another product already uses it, a number is added when you create.",
           rules: { required: true, maxLength: 200 },
         },
         { type: FieldType.LOCALIZED_TEXTAREA, name: "description", label: "Description", rows: 5 },
@@ -123,10 +125,12 @@ export interface ProductFormProps {
   variantCount?: number;
   /** The image gallery as edited on the page but not yet saved: "Save product" saves it too when it differs. */
   pendingImages?: ImageAsset[];
+  /** Create only: start from this product's product-level content (see `cloneProductValues`). Nothing is saved until staff create. */
+  cloneOf?: Product;
 }
 
 /** API shape → form values; no product → the create defaults. Unlinked brand / size guide become the "none" option. */
-export function mapProductToFormValues(oldData?: Product): ProductFormValues {
+export function mapProductToFormValues(oldData?: ProductCloneValues): ProductFormValues {
   return {
     name: oldData?.name ?? EMPTY_TEXT,
     description: oldData?.description ?? EMPTY_TEXT,
@@ -149,14 +153,16 @@ export function mapProductToFormValues(oldData?: Product): ProductFormValues {
  * `null` on an edit, omitted on a create). A create opens the new draft's
  * page to add variants; an edit stays and resets to what was saved.
  */
-export function ProductForm({ endpoint, oldData, variantCount = 0, pendingImages }: ProductFormProps) {
+export function ProductForm({ endpoint, oldData, variantCount = 0, pendingImages, cloneOf }: ProductFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = Boolean(oldData);
   const categories = useCategoryOptions();
   const brands = useCatalogOptions(listBrandsEndpoint, { none: "No brand" });
   const sizeGuides = useCatalogOptions(listSizeGuidesEndpoint, { none: "No size guide" });
-  const form = useForm<ProductFormValues>({ defaultValues: mapProductToFormValues(oldData) });
+  const form = useForm<ProductFormValues>({ defaultValues: mapProductToFormValues(oldData ?? (cloneOf ? cloneProductValues(cloneOf) : undefined)) });
+  // A new product's slug and SEO titles follow its name until staff edit them; an existing product's never move.
+  useNameAutofill(form, !isEdit);
 
   const unlink = (value: string) => (value === NONE ? (isEdit ? null : undefined) : value);
   // An edit with unsaved gallery changes sends them too, so one "Save product" never leaves uploaded images behind.
@@ -182,15 +188,41 @@ export function ProductForm({ endpoint, oldData, variantCount = 0, pendingImages
       warnOnUnsavedChanges
       onSuccess={(saved) => {
         void queryClient.invalidateQueries();
+        const requestedSlug = form.getValues("slug").trim();
         // Clean again, so the unsaved-changes guard doesn't fire on what was just saved.
         form.reset(mapProductToFormValues(saved));
         if (isEdit) {
           toast.success("Product saved");
         } else {
-          toast.success(`${displayName(saved.name)} created as a draft — add its variants next`);
+          toast.success(
+            `${displayName(saved.name)} created as a draft — add its variants next`,
+            saved.slug !== requestedSlug ? `"${requestedSlug}" was already used, so its slug is "${saved.slug}".` : undefined
+          );
           router.push(AppRoute.PRODUCT(saved._id));
         }
       }}
     />
   );
+}
+
+/**
+ * Keeps `slug`, `seoTitle.en` and `seoTitle.ar` in step with the name while each still holds its generated value
+ * (`autofillFromName`). Subscribes rather than re-rendering on every keystroke; programmatic writes to the targets
+ * are not name changes, so they never loop.
+ */
+function useNameAutofill(form: UseFormReturn<ProductFormValues>, enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    let previous = { ...form.getValues("name") };
+    const subscription = form.watch((values, { name }) => {
+      if (name !== "name" && name !== "name.en" && name !== "name.ar") return;
+      const next = { en: values.name?.en ?? "", ar: values.name?.ar ?? "" };
+      const changes = autofillFromName(previous, next, { slug: form.getValues("slug"), seoTitle: form.getValues("seoTitle") });
+      previous = next;
+      for (const [path, value] of Object.entries(changes) as Array<[keyof typeof changes, string]>) {
+        form.setValue(path, value, { shouldDirty: true, shouldValidate: path === "slug" && form.formState.isSubmitted });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [enabled, form]);
 }

@@ -1,23 +1,18 @@
-import { PageShell, PermissionGuard } from "@kira-joo/frontend-toolkit-tailwind/primitives";
+import { PermissionGuard } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import type { Metadata } from "next";
-import { createProductEndpoint } from "src/api/products.endpoints";
 import { AppPermission } from "src/common/authorization/authorization-registry";
-import { AppRoute } from "src/common/routes/app-route";
 import { NoAccess } from "src/components/no-access";
-import { ProductForm } from "src/features/catalog/products/product-form";
+import { NewProductView } from "src/features/catalog/products/new-product-view";
 
 export const metadata: Metadata = { title: "New product" };
 
-export default function NewProductPage() {
+/** `?from=<productId>` pre-fills the form from that product ("Clone" on the products table). */
+export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ from?: string | string[] }> }) {
+  const { from } = await searchParams;
+  const cloneFromId = typeof from === "string" && from ? from : undefined;
   return (
     <PermissionGuard permission={AppPermission.PRODUCT.CREATE} fallback={<NoAccess />}>
-      <PageShell
-        title="New product"
-        description="Starts as a draft. Add its variants on the next page, then publish."
-        backRoute={{ path: AppRoute.PRODUCTS, label: "Products" }}
-      >
-        <ProductForm endpoint={createProductEndpoint} />
-      </PageShell>
+      <NewProductView cloneFromId={cloneFromId} />
     </PermissionGuard>
   );
 }
