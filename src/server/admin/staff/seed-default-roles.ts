@@ -144,7 +144,7 @@ const DEFAULT_ROLE_DEFINITIONS: Array<{ name: string; grantsAll?: boolean; permi
  * console today (`/api/admin/roles` is read-only), so nothing can remove one yet; the day a role-edit route exists the
  * seed needs a per-role "seeded" marker first, or removals will not stick.
  *
- * Must run after `syncPermissions()` (`instrumentation.ts`), since it resolves each `Entity.action` key to the
+ * Must run after `reconcilePermissions()` (`instrumentation.ts`), since it resolves each `Entity.action` key to the
  * `Permission` document's `_id`.
  */
 export async function seedDefaultRoles(): Promise<{ created: string[]; skipped: string[]; permissionsAdded: Record<string, string[]> }> {
@@ -158,7 +158,7 @@ export async function seedDefaultRoles(): Promise<{ created: string[]; skipped: 
   const resolve = (keys: string[] | undefined) =>
     (keys ?? []).map((key) => {
       const id = idByKey.get(key);
-      if (!id) throw new Error(`seedDefaultRoles: permission "${key}" not found — run syncPermissions() first.`);
+      if (!id) throw new Error(`seedDefaultRoles: permission "${key}" not found — run reconcilePermissions() first.`);
       return id;
     });
 

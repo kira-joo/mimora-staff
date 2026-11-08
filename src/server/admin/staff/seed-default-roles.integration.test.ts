@@ -1,9 +1,9 @@
 // @vitest-environment node
 import mongoose from "mongoose";
-import { syncPermissions } from "@kira-joo/backend-toolkit-mongoose";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { connectToDatabase } from "../../core/db/connect";
 import { RoleModel, PermissionModel } from "../../core/authorization/role.model";
+import { reconcilePermissions } from "../../core/authorization/reconcile-permissions";
 import { ALL_PERMISSION_DEFINITIONS, AppPermission, CustomPermission } from "../../../common/authorization/authorization-registry";
 import { seedDefaultRoles } from "./seed-default-roles";
 
@@ -12,7 +12,7 @@ process.env.MONGODB_DB ??= "store-platform-staff-test";
 
 beforeAll(async () => {
   await connectToDatabase();
-  await syncPermissions({ model: PermissionModel, definitions: ALL_PERMISSION_DEFINITIONS });
+  await reconcilePermissions({ model: PermissionModel, definitions: ALL_PERMISSION_DEFINITIONS });
 });
 
 afterEach(async () => {

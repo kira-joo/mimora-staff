@@ -78,16 +78,17 @@ export async function register(): Promise<void> {
   const phoneProblem = phoneCountryMismatch(storePhoneCountryCode(), profile?.contact?.phone);
   if (phoneProblem) (process.env.NODE_ENV === "production" ? console.error : console.warn)(`[phone] ${phoneProblem}`);
 
-  const { syncPermissions } = await import("@kira-joo/backend-toolkit-mongoose");
+  // One read, and a write only for a missing or drifted permission (see reconcile-permissions.ts) — not one per permission.
+  const { reconcilePermissions } = await import("./server/core/authorization/reconcile-permissions");
   const { PermissionModel } = await import("./server/core/authorization/role.model");
   const { ALL_PERMISSION_DEFINITIONS } = await import("./common/authorization/authorization-registry");
 
-  const result = await syncPermissions({
+  const result = await reconcilePermissions({
     model: PermissionModel,
     definitions: ALL_PERMISSION_DEFINITIONS,
   });
 
-  console.log(`[permissions] synced: ${result.created.length} created, ${result.skipped.length} already existed`);
+  console.log(`[permissions] synced: ${result.created.length} created, ${result.updated.length} updated, ${result.skipped.length} already existed`);
 
   const { seedDefaultRoles } = await import("./server/admin/staff/seed-default-roles");
   const roleResult = await seedDefaultRoles();
