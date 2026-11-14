@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_GROUP_MEMBERS, groupNameProblem, membershipProblems, normalizeMembers } from "./product-group-rules";
+import { MAX_GROUP_LABEL_LENGTH, MAX_GROUP_MEMBERS, groupNameProblem, membershipProblems, normalizeMembers } from "./product-group-rules";
 
 const member = (productId: string, en: string, ar: string) => ({ productId, label: { en, ar } });
 
@@ -22,8 +22,21 @@ describe("membershipProblems", () => {
     expect(membershipProblems([member("a", "Pink", "وردي"), member("b", "Rose", "وردي")])).toEqual(['Product 2 has the same Arabic label as product 1 ("وردي").']);
   });
 
-  it("caps label length and group size", () => {
-    expect(membershipProblems([member("a", "x".repeat(41), "بني")])).toEqual(["Product 1's English label is longer than 40 characters."]);
+  it("accepts a label of exactly 80 characters in either language", () => {
+    expect(MAX_GROUP_LABEL_LENGTH).toBe(80);
+    expect(membershipProblems([member("a", "x".repeat(80), "ب".repeat(80))])).toEqual([]);
+  });
+
+  it("refuses a label of 81 characters in either language", () => {
+    expect(membershipProblems([member("a", "x".repeat(81), "بني")])).toEqual(["Product 1's English label is longer than 80 characters."]);
+    expect(membershipProblems([member("a", "Brown", "ب".repeat(81))])).toEqual(["Product 1's Arabic label is longer than 80 characters."]);
+  });
+
+  it("measures the label after trimming", () => {
+    expect(membershipProblems([member("a", ` ${"x".repeat(80)} `, "بني")])).toEqual([]);
+  });
+
+  it("caps group size", () => {
     const many = Array.from({ length: MAX_GROUP_MEMBERS + 1 }, (_, i) => member(`p${i}`, `L${i}`, `ل${i}`));
     expect(membershipProblems(many)).toEqual([`A group can hold at most ${MAX_GROUP_MEMBERS} products.`]);
   });

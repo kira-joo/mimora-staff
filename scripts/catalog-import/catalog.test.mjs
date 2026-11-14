@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { groupKey, parseCatalog } from "./catalog.mjs";
+import { MAX_GROUP_LABEL_LENGTH as SERVER_MAX_GROUP_LABEL_LENGTH } from "../../src/server/catalog/product-group-rules";
+import { MAX_GROUP_LABEL_LENGTH, groupKey, parseCatalog } from "./catalog.mjs";
 import { product } from "./test-fixtures.mjs";
 
 const group = (members, name = { en: "G", ar: "ج" }) => ({ groupName: name, membersInStorefrontOrder: members.map(([productSlug, en, ar]) => ({ productSlug, label: { en, ar } })) });
@@ -61,6 +62,23 @@ describe("parseCatalog", () => {
     expect(errors).toContain('"a" is already in group "G"');
     expect(errors).toContain('label.en "a2" is used twice in this group');
     expect(errors).toContain('label needs "en"');
+  });
+
+  it("uses the same label limit as the server (80)", () => {
+    expect(MAX_GROUP_LABEL_LENGTH).toBe(80);
+    expect(MAX_GROUP_LABEL_LENGTH).toBe(SERVER_MAX_GROUP_LABEL_LENGTH);
+  });
+
+  it("accepts group labels of exactly 80 characters in both languages", () => {
+    const parsed = parseCatalog({ products: [product("a"), product("b")], productGroupAssignmentSteps: [group([["a", "x".repeat(80), "ب".repeat(80)], ["b", "y".repeat(80), "ج".repeat(80)]])] });
+    expect(parsed.errors).toEqual([]);
+  });
+
+  it("refuses a group label of 81 characters in either language", () => {
+    const en = parseCatalog({ products: [product("a"), product("b")], productGroupAssignmentSteps: [group([["a", "x".repeat(81), "أ"], ["b", "B", "ب"]])] }).errors;
+    expect(en).toEqual(["productGroupAssignmentSteps[0] member 1: label.en is longer than 80 characters."]);
+    const ar = parseCatalog({ products: [product("a"), product("b")], productGroupAssignmentSteps: [group([["a", "A", "أ"], ["b", "B", "ب".repeat(81)]])] }).errors;
+    expect(ar).toEqual(["productGroupAssignmentSteps[0] member 2: label.ar is longer than 80 characters."]);
   });
 
   it("warns (does not refuse) a one-product group", () => {

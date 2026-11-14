@@ -57,7 +57,7 @@ from another folder: an absolute path as given, a relative one taken from `scrip
 - A gallery: `"sourceImageFilenames": ["front.jpeg", "back.jpeg"]` instead of `sourceImageFilename` (first = main).
 - Prices are strings (`"100.00"`), never numbers. `lifecycle` is required — it is never assumed.
 - A product without options has exactly one variant; with options, one variant per distinct combination.
-- Group members must be products in the same file; a product is in at most one group; labels need both languages.
+- Group members must be products in the same file; a product is in at most one group; labels need both languages, up to 80 characters each.
 - Images: JPEG, PNG or WebP, ≤ 8 MB, 200–8000 px (the console's own upload rules).
 
 ## Run it

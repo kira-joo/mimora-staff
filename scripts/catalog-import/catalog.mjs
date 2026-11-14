@@ -25,7 +25,7 @@ const OBJECT_ID = /^[0-9a-f]{24}$/;
 const MONEY = /^\d+(\.\d{1,2})?$/;
 /** Mirrors the server's group rules (`product-group-rules.ts`) so a bad group is caught BEFORE its products are created. */
 export const MAX_GROUP_MEMBERS = 30;
-export const MAX_GROUP_LABEL_LENGTH = 40;
+export const MAX_GROUP_LABEL_LENGTH = 80;
 
 const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 const text = (value) => (typeof value === "string" ? value.trim() : "");

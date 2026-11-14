@@ -3,7 +3,7 @@ import type { LocalizedString } from "@kira-joo/toolkit-common";
 /** More alternatives than this stops reading as "the same item in another colour" on a product page. */
 export const MAX_GROUP_MEMBERS = 30;
 /** A label is a colour or design name ("Brown", "Teddy bear"), shown on a small tile. */
-export const MAX_GROUP_LABEL_LENGTH = 40;
+export const MAX_GROUP_LABEL_LENGTH = 80;
 export const MAX_GROUP_NAME_LENGTH = 120;
 
 export interface GroupMemberInput {

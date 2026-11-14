@@ -234,6 +234,8 @@ describe("membership", () => {
       { productId: p, label: L("Brown", "بني") },
       { productId: q, label: L("brown", "وردي") },
     ]],
+    ["an English label of 81 characters", (p: string) => [{ productId: p, label: L("x".repeat(81), "بني") }]],
+    ["an Arabic label of 81 characters", (p: string) => [{ productId: p, label: L("Brown", "ب".repeat(81)) }]],
   ])("refuses %s (400) and changes nothing", async (_label, build) => {
     const brown = await seedProduct("brown");
     const pink = await seedProduct("pink");
@@ -241,6 +243,15 @@ describe("membership", () => {
     const result = await setMembers(created._id, 0, build(brown, pink));
     expect(result.status).toBe(400);
     expect((await readGroup(created._id)).body).toMatchObject({ revision: 0, members: [] });
+  });
+
+  it("accepts and stores labels of exactly 80 characters in both languages", async () => {
+    const brown = await seedProduct("brown");
+    const { body: created } = await createGroup();
+    const label = L("x".repeat(80), "ب".repeat(80));
+    const result = await setMembers(created._id, 0, [{ productId: brown, label }]);
+    expect(result.status).toBe(200);
+    expect((await readGroup(created._id)).body.members[0].label).toEqual(label);
   });
 
   it("refuses a product that does not exist (404) and rolls back the whole save", async () => {
