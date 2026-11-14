@@ -13,6 +13,8 @@ export interface ProductListView {
   lifecycle: "draft" | "published" | "archived";
   publishAt?: Date;
   order: number;
+  /** The product group it belongs to, if any, and its label there. */
+  group?: { groupId: string; label: LocalizedString; order: number };
   listing: {
     minActivePrice?: Money;
     maxActivePrice?: Money;
@@ -54,6 +56,7 @@ export async function listProducts(query: ListAdminProductsQueryDto): Promise<Pa
       lifecycle: p.lifecycle,
       publishAt: p.publishAt,
       order: p.order,
+      group: p.group ? { groupId: p.group.groupId.toString(), label: p.group.label, order: p.group.order } : undefined,
       listing: p.listing,
       ratingsSummary: p.ratingsSummary,
       createdAt: (p as WithTimestamps<typeof p>).createdAt,

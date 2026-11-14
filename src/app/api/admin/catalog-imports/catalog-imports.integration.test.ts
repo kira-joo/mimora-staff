@@ -362,3 +362,32 @@ describe("permissions — the negative cases", () => {
     expect((await publish(batch._id, publisher)).status).toBe(200);
   });
 });
+
+describe("attribute reuse — the same rule as the product form", () => {
+  const header = HEADER.replace("attributes,", "attributes,attribute_names,");
+  const row = (slug: string, attribute: string, names: string, sku: string) => `${slug},${slug},اسم,,tops,,draft,,,"${attribute}","${names}",${sku},,10,,,1,,,`;
+
+  it("refuses a NEW attribute key whose name an existing attribute already has, and such a batch cannot publish", async () => {
+    expect((await publish((await stageOk())._id)).status).toBe(200); // thawb now carries material = Material / الخامة
+    const clash = await stageOk([header, row("scarf", "fabric=wool|Wool|صوف", "fabric=Material|الخامة", "SC-1")].join("\n"));
+    expect(clash.rowErrors.map((error) => error.message)).toEqual([expect.stringContaining('An attribute named "Material" already exists (key "material")')]);
+    expect((await publish(clash._id)).status).toBe(409);
+    expect(await ProductModel.countDocuments({ slug: "scarf" })).toBe(0);
+  });
+
+  it("reusing the existing key, or a genuinely new name, stages cleanly", async () => {
+    expect((await publish((await stageOk())._id)).status).toBe(200);
+    const fine = await stageOk(
+      [header, row("scarf", "material=wool|Wool|صوف", "material=Material|الخامة", "SC-1"), row("hat", "warmth=high|High|عالي", "warmth=Warmth|الدفء", "HT-1")].join("\n")
+    );
+    expect(fine.rowErrors).toEqual([]);
+  });
+
+  it("refuses two rows that introduce one name under two NEW keys (the second row is the duplicate)", async () => {
+    const staged = await stageOk(
+      [header, row("a1", "fit=slim|Slim|ضيق", "fit=Fit|القصة", "A1-1"), row("a2", "cut=slim|Slim|ضيق", "cut=Fit|القصة", "A2-1"), row("a3", "fit=loose|Loose|واسع", "fit=Fit|القصة", "A3-1")].join("\n")
+    );
+    expect(staged.rowErrors.map((error) => error.row)).toEqual([3]);
+    expect(staged.rowErrors[0]?.message).toContain('An attribute named "Fit" already exists (key "fit")');
+  });
+});

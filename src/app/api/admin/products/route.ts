@@ -4,6 +4,7 @@ import { CreateProductDto } from "../../../../server/admin/dto/create-product.dt
 import { listProducts } from "../../../../server/admin/products/list-products";
 import { createProduct } from "../../../../server/admin/products/create-product";
 import { AppPermission } from "../../../../common/authorization/authorization-registry";
+import { assertAttributeIdentity } from "../../../../server/catalog/attribute-catalog-store";
 
 export const GET = createGetRoute({
   auth: { permissions: [AppPermission.PRODUCT.READ] },
@@ -19,6 +20,8 @@ export const POST = createPostRoute({
   body: CreateProductDto,
   revalidateTags: ["PRODUCTS"],
   handler: async ({ body }) => {
+    // A NEW attribute may not reuse an existing attribute's name (catalog import applies the same rule per row).
+    if (body.attributes) await assertAttributeIdentity(body.attributes);
     const product = await createProduct({
       name: body.name,
       description: body.description,

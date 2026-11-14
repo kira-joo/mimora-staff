@@ -15,6 +15,8 @@ import { displayName } from "../catalog-display";
 import { priceRange } from "./product-display";
 import { ProductForm } from "./product-form";
 import { ProductLifecycleActions } from "./product-lifecycle-actions";
+import { ProductGroupPanel } from "../product-groups/product-group-panel";
+import { ProductContentsPanel } from "../product-contents/product-contents-panel";
 import { VariantMatrixPanel } from "./variant-matrix-panel";
 import { VariantsPanel } from "./variants-panel";
 
@@ -43,8 +45,10 @@ export function ProductEditView({ id }: { id: string }) {
           actions={<ProductLifecycleActions product={product} onChanged={() => void query.refetch()} />}
         >
           <div className="flex flex-col gap-6">
+            <ProductGroupPanel product={product} onChanged={() => void query.refetch()} />
             <VariantsPanel product={product} onChanged={() => void query.refetch()} />
             <VariantMatrixPanel product={product} onChanged={() => void query.refetch()} />
+            <ProductContentsPanel product={product} />
             <ProductContent product={product} variantCount={variants.data?.total ?? 0} onChanged={() => void query.refetch()} />
           </div>
         </PageShell>

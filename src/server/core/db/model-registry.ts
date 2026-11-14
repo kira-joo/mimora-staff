@@ -11,6 +11,7 @@ import { CategoryModel } from "../../catalog/category.schema";
 import { CollectionModel } from "../../catalog/collection.schema";
 import { BrandModel } from "../../catalog/brand.schema";
 import { ProductModel } from "../../catalog/product.schema";
+import { ProductGroupModel } from "../../catalog/product-group.schema";
 import { VariantModel } from "../../catalog/variant.schema";
 import { SizeGuideModel } from "../../catalog/size-guide.schema";
 import { StockMovementModel } from "../../catalog/stock-movement.schema";
@@ -65,6 +66,7 @@ export const ALL_MODELS = [
   CollectionModel,
   BrandModel,
   ProductModel,
+  ProductGroupModel,
   VariantModel,
   SizeGuideModel,
   StockMovementModel,

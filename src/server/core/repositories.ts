@@ -9,6 +9,7 @@ import { CatalogImportBatchModel } from "../catalog/catalog-import-batch.schema"
 import { CategoryModel } from "../catalog/category.schema";
 import { CollectionModel } from "../catalog/collection.schema";
 import { ProductModel } from "../catalog/product.schema";
+import { ProductGroupModel, type ProductGroupSchema } from "../catalog/product-group.schema";
 import { SizeGuideModel } from "../catalog/size-guide.schema";
 import { VariantModel } from "../catalog/variant.schema";
 import { CartModel } from "../commerce/cart.schema";
@@ -141,6 +142,11 @@ export const addressRepository = createMongooseRepository<AddressSchema>({
 export const productRepository = createMongooseRepository<ProductSchema>({
   model: ProductModel,
   entityName: "Product",
+});
+
+export const productGroupRepository = createMongooseRepository<ProductGroupSchema>({
+  model: ProductGroupModel,
+  entityName: "ProductGroup",
 });
 
 export const categoryRepository = createMongooseRepository<CategorySchema>({

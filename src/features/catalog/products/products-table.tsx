@@ -6,13 +6,14 @@ import { Copy, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { listCategoriesEndpoint } from "src/api/categories.endpoints";
+import { listProductGroupsEndpoint } from "src/api/product-groups.endpoints";
 import { listProductsEndpoint, type ProductListItem } from "src/api/products.endpoints";
 import { AppPermission } from "src/common/authorization/authorization-registry";
 import { useStoreFormat } from "src/common/format/store-format";
 import { AppRoute } from "src/common/routes/app-route";
 import { usePermission } from "src/features/auth/use-permission";
 import { ProductLifecycleSignal } from "src/features/status/status-signal";
-import { LocalizedNameCell } from "../catalog-display";
+import { LocalizedNameCell, displayName } from "../catalog-display";
 import { useCatalogOptions } from "../use-catalog-options";
 import { priceRange } from "./product-display";
 
@@ -26,6 +27,9 @@ export function ProductsTable() {
   const can = usePermission();
   const format = useStoreFormat();
   const categories = useCatalogOptions(listCategoriesEndpoint);
+  // Group names for the Group column; a role that cannot read groups still sees each product's label there.
+  const groups = useCatalogOptions(listProductGroupsEndpoint);
+  const groupName = useMemo(() => new Map(groups.options.map((option) => [option.value, option.label])), [groups.options]);
   const categoryName = useMemo(() => new Map(categories.options.map((option) => [option.value, option.label])), [categories.options]);
 
   return (
@@ -67,6 +71,23 @@ export function ProductsTable() {
               {categoryName.get(row.categoryId) ?? "—"}
             </span>
           ),
+        },
+        {
+          key: "group",
+          header: "Group",
+          render: (row) =>
+            row.group ? (
+              <span className="flex min-w-0 flex-col">
+                <span dir="auto" className="truncate">
+                  {groupName.get(row.group.groupId) ?? "In a group"}
+                </span>
+                <span dir="auto" className="truncate text-[13px] text-[var(--st-ink-muted)]">
+                  {displayName(row.group.label)}
+                </span>
+              </span>
+            ) : (
+              <span className="text-[var(--st-ink-muted)]">—</span>
+            ),
         },
         { key: "listing", header: "Price", render: (row) => <span className="st-figure whitespace-nowrap">{priceRange(row.listing, format.money)}</span> },
         {

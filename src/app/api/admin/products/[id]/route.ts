@@ -4,6 +4,7 @@ import { UpdateProductDto } from "../../../../../server/admin/dto/update-product
 import { updateProduct } from "../../../../../server/admin/products/update-product";
 import { productRepository } from "../../../../../server/core/repositories";
 import { AppPermission } from "../../../../../common/authorization/authorization-registry";
+import { assertAttributeIdentity } from "../../../../../server/catalog/attribute-catalog-store";
 
 export const GET = createGetRoute({
   auth: { permissions: [AppPermission.PRODUCT.READ_ONE] },
@@ -20,6 +21,12 @@ export const PUT = createPutRoute({
   body: UpdateProductDto,
   revalidateTags: ["PRODUCTS"],
   handler: async ({ params, body }) => {
+    // Keys already on this product always pass (passed explicitly, not left to the catalog), so saving a legacy
+    // product unchanged is never refused. A missing product falls through to updateProduct's own 404.
+    if (body.attributes) {
+      const current = await productRepository.findOne({ where: { _id: params.id }, skipThrowError: true });
+      await assertAttributeIdentity(body.attributes, (current?.attributes ?? []).map((attribute) => attribute.key));
+    }
     const product = await updateProduct(params.id, {
       name: body.name,
       description: body.description,

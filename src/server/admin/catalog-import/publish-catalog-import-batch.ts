@@ -6,6 +6,8 @@ import type { CatalogImportBatchSchema } from "../../catalog/catalog-import-batc
 import { applyCatalogImportPlan } from "./apply-catalog-import";
 import { loadCatalogSnapshot } from "./load-catalog-snapshot";
 import { planCatalogImport } from "./plan-catalog-import";
+import { importAttributeIdentityErrors } from "./import-attribute-identity";
+import { loadAttributeCatalog } from "../../catalog/attribute-catalog-store";
 import type { ImportIssue, ImportProduct } from "./import-types";
 
 /**
@@ -47,10 +49,12 @@ export async function publishCatalogImportBatch(batchId: string, publishedBy: st
 
     const products = batch.rows as ImportProduct[];
     const plan = planCatalogImport(products, await loadCatalogSnapshot(products));
-    if (plan.errors.length > 0) {
-      const first = plan.errors[0] as ImportIssue;
+    // Re-checked against the catalog as it is NOW: another product may have taken an attribute name since staging.
+    const errors = [...plan.errors, ...importAttributeIdentityErrors(plan.products, await loadAttributeCatalog())];
+    if (errors.length > 0) {
+      const first = errors[0] as ImportIssue;
       throw new ConflictError(
-        `The catalog changed since this batch was staged: ${plan.errors.length} problem${plan.errors.length === 1 ? "" : "s"} now. First, on line ${first.row}: ${first.message} Nothing was published — discard this batch and stage the file again.`
+        `The catalog changed since this batch was staged: ${errors.length} problem${errors.length === 1 ? "" : "s"} now. First, on line ${first.row}: ${first.message} Nothing was published — discard this batch and stage the file again.`
       );
     }
 

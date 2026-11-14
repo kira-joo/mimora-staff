@@ -1,5 +1,5 @@
 import type { SideNavSectionConfig } from "@kira-joo/frontend-toolkit-tailwind/primitives";
-import { BarChart3, Bell, Boxes, Building2, ClipboardList, Clock, Contact, CreditCard, FileText, FileUp, FolderTree, History, Landmark, LayoutTemplate, Layers, Mail, MapPinned, MessageSquareText, Package, PackageCheck, PackageOpen, Palette, Percent, Ruler, ScrollText, ShieldCheck, SlidersHorizontal, Store, Sunrise, Tags, Users } from "lucide-react";
+import { BarChart3, Layers2, Bell, Boxes, Building2, ClipboardList, Clock, Contact, CreditCard, FileText, FileUp, FolderTree, History, Landmark, LayoutTemplate, Layers, Mail, MapPinned, MessageSquareText, Package, PackageCheck, PackageOpen, Palette, Percent, Ruler, ScrollText, ShieldCheck, SlidersHorizontal, Store, Sunrise, Tags, Users } from "lucide-react";
 import { AppPermission, CustomPermission } from "src/common/authorization/authorization-registry";
 import { AppRoute } from "src/common/routes/app-route";
 
@@ -47,6 +47,7 @@ export const CONSOLE_NAV: SideNavSectionConfig[] = [
     label: "Catalog",
     items: [
       { key: "products", label: "Products", href: AppRoute.PRODUCTS, icon: Package, permission: AppPermission.PRODUCT.READ, match: "prefix" },
+      { key: "product-groups", label: "Product groups", href: AppRoute.PRODUCT_GROUPS, icon: Layers2, permission: AppPermission.PRODUCT_GROUP.READ, match: "prefix" },
       { key: "categories", label: "Categories", href: AppRoute.CATEGORIES, icon: FolderTree, permission: AppPermission.CATEGORY.READ, match: "prefix" },
       { key: "collections", label: "Collections", href: AppRoute.COLLECTIONS, icon: Layers, permission: AppPermission.COLLECTION.READ, match: "prefix" },
       { key: "brands", label: "Brands", href: AppRoute.BRANDS, icon: Tags, permission: AppPermission.BRAND.READ, match: "prefix" },

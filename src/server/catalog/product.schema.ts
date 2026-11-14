@@ -60,6 +60,19 @@ import mongoose from "mongoose";
  * axis or vice versa — the architecture review flagged this explicitly as a
  * concept not to merge.
  */
+/** `ProductSchema.group`: which group a product is in, what it is called there, and where it sits. */
+export interface ProductGroupMembership {
+  groupId: mongoose.Types.ObjectId;
+  label: LocalizedString;
+  order: number;
+}
+
+/** `ProductSchema.contents`: one product this product contains ("what's inside" a gift box), and how many. */
+export interface ProductContentEntry {
+  productId: mongoose.Types.ObjectId;
+  quantity: number;
+}
+
 @MongoSchema({ timestamps: true })
 export class ProductSchema {
   _id!: mongoose.Types.ObjectId;
@@ -188,6 +201,53 @@ export class ProductSchema {
   /** Display/sort position within a category or collection listing. */
   @MongoField({ type: Number, default: 0 })
   order!: number;
+
+  /**
+   * The product group this product belongs to, if any — see `ProductGroupSchema` for why membership lives here.
+   * `label` is how the storefront names this product among its group ("Brown", "بني"); `order` its place in the
+   * group. Absent on every product that is not grouped, which is every product written before groups existed.
+   *
+   * Written ONLY by the product-group services (`admin/product-groups/*`). Product create, update, lifecycle, clone
+   * and catalog import name their fields explicitly and never touch this one, so editing or archiving a product
+   * keeps its membership and a clone does not inherit it.
+   */
+  @MongoField({
+    type: new mongoose.Schema(
+      {
+        groupId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductGroup", required: true, index: true },
+        label: localizedStringSchema(),
+        order: { type: Number, required: true, default: 0 },
+      },
+      { _id: false }
+    ),
+    required: false,
+    default: undefined,
+  })
+  group?: ProductGroupMembership;
+
+  /**
+   * The other products this product contains — "what's inside" a gift box — in display order. REFERENCES, never
+   * copies: the storefront resolves each entry's live name and images at read time, so editing an included product
+   * shows on the box's page automatically. The box stays an independent product (own variants, price, stock, orders);
+   * this is not a bundle and does not touch stock. Absent on every product with no contents.
+   *
+   * Written ONLY by the product-contents service (`admin/product-contents/*`). Product create, update, lifecycle,
+   * clone and catalog import name their fields explicitly and never touch this one.
+   */
+  @MongoField({
+    type: [
+      new mongoose.Schema(
+        {
+          productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+          quantity: { type: Number, required: true, min: 1, max: 99, validate: { validator: Number.isInteger, message: "quantity must be an integer" } },
+        },
+        { _id: false }
+      ),
+    ],
+    required: false,
+    default: undefined,
+  })
+  contents?: ProductContentEntry[];
 
   /**
    * Materialised listing rollup (MDS §8.2/§12) — maintained transactionally,

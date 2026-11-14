@@ -1,7 +1,11 @@
 import { NotFoundError } from "@kira-joo/backend-toolkit-core";
 import type { ImageAsset } from "@kira-joo/toolkit-common";
 import type { ProductSchema } from "../catalog/product.schema";
+import { MAX_GROUP_MEMBERS } from "../catalog/product-group-rules";
 import { inventorySettingsRepository, productRepository, variantRepository } from "../core/repositories";
+import { ProductModel } from "../catalog/product.schema";
+import { linkedProductsView, type LinkedProductsView } from "./linked-products";
+import { MAX_INCLUDED_IMAGES, includedProductsView, type IncludedProductItem } from "./included-products";
 import { buildVariantMatrix } from "../engines/variant-matrix/build-variant-matrix";
 import type { MatrixVariant } from "../engines/variant-matrix/variant-matrix.types";
 import { resolveLowStock } from "../engines/variant-matrix/resolve-low-stock";
@@ -31,6 +35,18 @@ export interface StorefrontMatrixVariant extends MatrixVariant {
 export interface ProductDetailView {
   product: ProductSchema;
   variants: StorefrontMatrixVariant[];
+  /**
+   * The other published products in this product's group, offered as alternatives (each its own product and page).
+   * `null` for an ungrouped product, or a group with no other published member. This is what the storefront renders;
+   * `product.group` (the raw membership) is present on grouped products but carries nothing a page needs.
+   */
+  linkedProducts: LinkedProductsView | null;
+  /**
+   * The products this product contains ("what's inside" a gift box), resolved at read time from the live product
+   * records — so a rename or new image of an included product shows here with no change to this one. Published
+   * products only, in stored order; empty when there are none.
+   */
+  includedProducts: IncludedProductItem[];
 }
 
 /**
@@ -84,5 +100,35 @@ export async function getProductDetail(slug: string): Promise<ProductDetailView>
   });
 
   // `buildVariantMatrix` asserts the axis cap and returns the same array it was given, so the extra fields survive.
-  return { product, variants: buildVariantMatrix(matrixVariants) as StorefrontMatrixVariant[] };
+  return {
+    product,
+    variants: buildVariantMatrix(matrixVariants) as StorefrontMatrixVariant[],
+    linkedProducts: await readLinkedProducts(product),
+    includedProducts: await readIncludedProducts(product),
+  };
+}
+
+/** Published members of the product's group, in group order — drafts and archived members never reach a customer. */
+async function readLinkedProducts(product: ProductSchema): Promise<LinkedProductsView | null> {
+  if (!product.group?.groupId) return null;
+  const siblings = await ProductModel.find(
+    { "group.groupId": product.group.groupId, lifecycle: "published" },
+    { slug: 1, name: 1, images: { $slice: 1 }, "listing.primaryImage": 1, group: 1 }
+  )
+    .sort({ "group.order": 1, _id: 1 })
+    .limit(MAX_GROUP_MEMBERS)
+    .lean();
+  return linkedProductsView(product._id, siblings);
+}
+
+
+/** The contents' LIVE products, published only (a draft or archived one would 404 and may be unreleased), in stored order. */
+async function readIncludedProducts(product: ProductSchema): Promise<IncludedProductItem[]> {
+  const contents = product.contents;
+  if (!contents || contents.length === 0) return [];
+  const published = await ProductModel.find(
+    { _id: { $in: contents.map((entry) => entry.productId) }, lifecycle: "published" },
+    { slug: 1, name: 1, images: { $slice: MAX_INCLUDED_IMAGES }, "listing.primaryImage": 1 }
+  ).lean();
+  return includedProductsView(contents, published);
 }

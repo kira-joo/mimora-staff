@@ -10,6 +10,7 @@ export const EntityName = {
   VARIANT: "Variant",
   CATEGORY: "Category",
   COLLECTION: "Collection",
+  PRODUCT_GROUP: "ProductGroup",
   BRAND: "Brand",
   SIZE_GUIDE: "SizeGuide",
   STOCK_MOVEMENT: "StockMovement",

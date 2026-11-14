@@ -26,6 +26,13 @@ export interface ProductAttribute {
   values: Array<{ key: string; value: LocalizedText }>;
 }
 
+/** A product's place in a product group (`product.group`): which group, what it is called there, its position. */
+export interface ProductGroupMembership {
+  groupId: string;
+  label: LocalizedText;
+  order: number;
+}
+
 /** `GET /admin/products` row (`ProductListView`). Prices are decimal strings. */
 export interface ProductListItem {
   _id: string;
@@ -36,6 +43,7 @@ export interface ProductListItem {
   lifecycle: ProductLifecycle;
   publishAt?: string;
   order: number;
+  group?: ProductGroupMembership;
   listing: { minActivePrice?: string; maxActivePrice?: string; purchasableVariantCount: number };
   createdAt?: string;
 }
@@ -58,6 +66,8 @@ export interface Product {
   lifecycle: ProductLifecycle;
   publishAt?: string;
   order: number;
+  /** Set only through the product-group endpoints. */
+  group?: ProductGroupMembership;
   listing: { minActivePrice?: string; maxActivePrice?: string; purchasableVariantCount: number };
   updatedAt?: string;
 }

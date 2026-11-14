@@ -31,6 +31,8 @@ export const AppRoute = {
   COLLECTION: (id: string) => `/catalog/collections/${encodeURIComponent(id)}`,
   CATALOG_IMPORTS: "/catalog/imports",
   CATALOG_IMPORT: (id: string) => `/catalog/imports/${encodeURIComponent(id)}`,
+  PRODUCT_GROUPS: "/catalog/product-groups",
+  PRODUCT_GROUP: (id: string) => `/catalog/product-groups/${encodeURIComponent(id)}`,
   SIZE_GUIDES: "/catalog/size-guides",
   SIZE_GUIDE_NEW: "/catalog/size-guides/new",
   SIZE_GUIDE: (id: string) => `/catalog/size-guides/${encodeURIComponent(id)}`,
