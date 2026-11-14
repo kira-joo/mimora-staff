@@ -92,6 +92,26 @@ describe("console create — slug", () => {
     expect((await create(body("golden-heart-pendant-necklace"))).product.slug).toBe("golden-heart-pendant-necklace");
   });
 
+  it("?onSlugTaken=reject refuses a taken slug with 409 and writes nothing (the catalog importer's guarantee)", async () => {
+    await create(body("golden-heart"));
+    const response = await owner.call(routes.POST, "/api/admin/products?onSlugTaken=reject", { method: "POST", body: body("golden-heart") });
+    expect(response.status).toBe(409);
+    expect(await ProductModel.countDocuments({ slug: /^golden-heart/ })).toBe(1);
+    const fresh = await owner.call(routes.POST, "/api/admin/products?onSlugTaken=reject", { method: "POST", body: body("golden-heart-2") });
+    expect(fresh.status).toBeLessThan(300);
+    expect(((await fresh.json()) as Product).slug).toBe("golden-heart-2");
+  });
+
+  it("?onSlugTaken=reject under a race: two simultaneous creates of one slug leave exactly one product (the unique index decides)", async () => {
+    const both = await Promise.all([1, 2].map(() => owner.call(routes.POST, "/api/admin/products?onSlugTaken=reject", { method: "POST", body: body("race-slug") })));
+    expect(both.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(await ProductModel.countDocuments({ slug: /^race-slug/ })).toBe(1);
+  });
+
+  it("an unknown onSlugTaken value is a 400", async () => {
+    expect((await owner.call(routes.POST, "/api/admin/products?onSlugTaken=overwrite", { method: "POST", body: body("x") })).status).toBe(400);
+  });
+
   it("catalog import's path (the service default) still refuses a taken slug with 409", async () => {
     await create(body("golden-heart"));
     await expect(createProduct({ name: L("X", "س"), description: L("", ""), slug: "golden-heart", categoryId })).rejects.toThrow(ConflictError);

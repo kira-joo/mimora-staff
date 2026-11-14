@@ -1,0 +1,6 @@
+# A batch is local data, never committed: catalog.json, the product images, the resume state
+# (.catalog-import-state.json), the lock and the run reports. Only this file and the README are tracked,
+# so the folder exists in every checkout.
+*
+!.gitignore
+!README.md

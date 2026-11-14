@@ -24,7 +24,7 @@ export default defineConfig({
      * zone — or none — sets or deletes `process.env.STORE_TIMEZONE` itself.
      */
     env: { STORE_TIMEZONE: "Africa/Cairo" },
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
     /*
      * The `*.integration.test.ts` files connect to one real, shared MongoDB
      * replica set (`docker compose up -d`) rather than a private in-memory

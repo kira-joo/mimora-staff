@@ -1,6 +1,7 @@
 import { createGetRoute, createPostRoute } from "../../../../server/core/route-factories";
 import { ListAdminProductsQueryDto } from "../../../../server/admin/dto/list-admin-products-query.dto";
 import { CreateProductDto } from "../../../../server/admin/dto/create-product.dto";
+import { CreateProductQueryDto } from "../../../../server/admin/dto/create-product-query.dto";
 import { listProducts } from "../../../../server/admin/products/list-products";
 import { createProduct } from "../../../../server/admin/products/create-product";
 import { AppPermission } from "../../../../common/authorization/authorization-registry";
@@ -18,8 +19,9 @@ export const GET = createGetRoute({
 export const POST = createPostRoute({
   auth: { permissions: [AppPermission.PRODUCT.CREATE] },
   body: CreateProductDto,
+  query: CreateProductQueryDto,
   revalidateTags: ["PRODUCTS"],
-  handler: async ({ body }) => {
+  handler: async ({ body, query }) => {
     // A NEW attribute may not reuse an existing attribute's name (catalog import applies the same rule per row).
     if (body.attributes) await assertAttributeIdentity(body.attributes);
     const product = await createProduct({
@@ -38,7 +40,7 @@ export const POST = createPostRoute({
       lifecycle: body.lifecycle,
       publishAt: body.publishAt ? new Date(body.publishAt) : undefined,
       order: body.order,
-    }, { onSlugTaken: "suffix" });
+    }, { onSlugTaken: query.onSlugTaken ?? "suffix" });
 
     return product;
   },
