@@ -44,6 +44,12 @@ async function raw(id: string) {
   return PromotionModel.collection.findOne({ _id: new mongoose.Types.ObjectId(id) });
 }
 
+/** The BSON type MongoDB itself reports for a stored field (a raw read cannot tell a double from an int). */
+async function storedType(id: string, field: string) {
+  const [row] = await PromotionModel.collection.aggregate([{ $match: { _id: new mongoose.Types.ObjectId(id) } }, { $project: { type: { $type: `$${field}` } } }]).toArray();
+  return row?.type;
+}
+
 beforeAll(async () => {
   await connectToDatabase();
   admin = await signInAsOwner();
@@ -59,13 +65,13 @@ beforeEach(async () => {
 });
 
 describe("value — an exact decimal, never a float", () => {
-  it("stores a FIXED value as Decimal128 and returns it as the same decimal string", async () => {
+  it("stores a FIXED value as BSON Double and returns it as the same decimal string", async () => {
     const { status, body } = await create({ type: "FIXED", value: "49.99" });
     expect(status).toBe(201);
     expect(body.value).toBe("49.99");
     const stored = await raw(body._id);
-    expect(stored?.value?._bsontype).toBe("Decimal128");
-    expect(stored?.value?.toString()).toBe("49.99");
+    expect(await storedType(body._id, "value")).toBe("double");
+    expect(stored?.value).toBe(49.99);
     expect((await read(body._id)).value).toBe("49.99");
   });
 
@@ -84,7 +90,7 @@ describe("value — an exact decimal, never a float", () => {
     const { status, body } = await create({ type: "FIXED", value: "0" });
     expect(status).toBe(201);
     expect(Number.isNaN(Number(body.value))).toBe(false);
-    expect((await raw(body._id))?.value?.toString()).toBe("0.00"); // stored at the money scale
+    expect((await raw(body._id))?.value).toBe(0); // stored at the money scale
   });
 
   it("stores no value for FREE_SHIPPING, even if one is sent", async () => {
@@ -105,13 +111,13 @@ describe("value — update", () => {
     const updated = await update(body._id, { value: "12.50" });
     expect(updated.status).toBe(200);
     expect(updated.body.value).toBe("12.5");
-    expect((await raw(body._id))?.value?.toString()).toBe("12.50");
+    expect((await raw(body._id))?.value).toBe(12.5);
   });
 
   it("refuses to clear the value of a FIXED promotion", async () => {
     const { body } = await create({ type: "FIXED", value: "10" });
     expect((await update(body._id, { value: null })).status).toBe(400);
-    expect((await raw(body._id))?.value?.toString()).toBe("10.00");
+    expect((await raw(body._id))?.value).toBe(10);
   });
 
   it("clears the value when the promotion becomes FREE_SHIPPING", async () => {
@@ -134,7 +140,7 @@ describe("value — update", () => {
   it("leaves the value alone when a different field changes", async () => {
     const { body } = await create({ type: "PERCENT", value: "15" });
     await update(body._id, { active: false });
-    expect((await raw(body._id))?.value?.toString()).toBe("15.00");
+    expect((await raw(body._id))?.value).toBe(15);
   });
 });
 
@@ -182,7 +188,7 @@ describe("conditions — editing one never erases the others", () => {
     const { body } = await create({ type: "PERCENT", value: "10", conditions: { minSubtotal: "200", startsAt, endsAt } });
     await update(body._id, { conditions: { endsAt: "2026-11-30T21:00:00.000Z" } });
     const stored = await raw(body._id);
-    expect(stored?.conditions.minSubtotal.toString()).toBe("200.00");
+    expect(stored?.conditions.minSubtotal).toBe(200);
     expect(stored?.conditions.startsAt.toISOString()).toBe(startsAt);
     expect(stored?.conditions.endsAt.toISOString()).toBe("2026-11-30T21:00:00.000Z");
   });

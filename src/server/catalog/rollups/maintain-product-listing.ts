@@ -103,7 +103,7 @@ export async function maintainProductListingRollup(productId: Types.ObjectId): P
    * (0 included) and always goes through `$set`; the three genuinely
    * optional fields go through `$unset` when they have nothing to hold,
    * `$set` otherwise. Plain object form (not an aggregation-pipeline
-   * array) throughout — the verified-working shape for `moneyField()`'s
+   * array) throughout — the verified-working shape for `moneyDoubleField()`'s
    * setter, per that field's own doc comment.
    */
   const lowStock = summarizeLowStock(lowStockVariants);

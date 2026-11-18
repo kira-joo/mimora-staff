@@ -22,7 +22,8 @@ export const VARIANT_KEYS = ["sku", "optionValues", "price", "compareAtPrice", "
 const LIFECYCLES = ["draft", "published", "archived"];
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const OBJECT_ID = /^[0-9a-f]{24}$/;
-const MONEY = /^\d+(\.\d{1,2})?$/;
+/** The server's money pattern (src/common/format/money-input.ts): at most 13 digits before the point, which a BSON Double stores exactly. */
+const MONEY = /^\d{1,13}(\.\d{1,2})?$/;
 /** Mirrors the server's group rules (`product-group-rules.ts`) so a bad group is caught BEFORE its products are created. */
 export const MAX_GROUP_MEMBERS = 30;
 export const MAX_GROUP_LABEL_LENGTH = 80;

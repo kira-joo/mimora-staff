@@ -1,8 +1,10 @@
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, MaxLength, Min, ValidateNested } from "class-validator";
 import { MAX_CARRIERS, MAX_URL_TEMPLATE_LENGTH } from "../../fulfilment/carrier-tracking";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
-const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
+// The one money pattern (bounded to what a BSON Double stores exactly) — see money-input.ts.
+const MONEY_STRING_PATTERN = MONEY_INPUT_PATTERN;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 class TaxSettingsDto {

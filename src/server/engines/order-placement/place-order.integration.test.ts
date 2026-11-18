@@ -13,6 +13,7 @@ import { OrderLineModel, OrderModel } from "../../commerce/order.schema";
 import { OrderSequenceModel } from "../../commerce/order-sequence.schema";
 import { PromotionModel } from "../../commerce/promotion.schema";
 import { connectToDatabase } from "../../core/db/connect";
+import { moneyPaths } from "../../core/money/money-double-field";
 import { placeOrder } from "./place-order";
 import type { PlaceOrderInput } from "./place-order.types";
 
@@ -208,8 +209,8 @@ describe("placing an order", () => {
 
     const [line] = sanitizeLeanResult(await OrderLineModel.find({ orderId: result.orderId }).lean());
     expect(line.unitCost?.toFixed(2)).toBe("61.25");
-    const raw = await mongoose.connection.collection("orderlines").findOne({ orderId: result.orderId });
-    expect(raw?.unitCost?._bsontype).toBe("Decimal128");
+    const [stored] = await mongoose.connection.collection("orderlines").aggregate([{ $match: { orderId: result.orderId } }, { $project: { type: { $type: "$unitCost" } } }]).toArray();
+    expect(stored?.type).toBe("double");
   });
 
   it("leaves unitCost absent when the variant has no cost price, rather than inventing a zero", async () => {
@@ -219,12 +220,20 @@ describe("placing an order", () => {
     expect(raw).not.toHaveProperty("unitCost");
   });
 
-  it("stores money as real BSON Decimal128, not a string or float", async () => {
+  it("stores every money field of the order and its lines as BSON Double — never Int32, a string or Decimal128", async () => {
     const { cart } = await seed();
     const result = await placeOrder(baseInput(cart._id));
 
-    const raw = await mongoose.connection.collection("orders").findOne({ _id: result.orderId });
-    expect(raw?.total?._bsontype).toBe("Decimal128");
+    // Every money path the schemas declare, typed by MongoDB itself. Whole amounts (200, 0) are the Int32 trap.
+    const typesOf = async (collection: string, match: Record<string, unknown>, paths: string[]) =>
+      mongoose.connection.collection(collection).aggregate([{ $match: match }, { $project: Object.fromEntries(paths.map((p) => [p.replace(/\./g, "_"), { $type: `$${p}` }])) }]).toArray();
+    const orderTypes = await typesOf("orders", { _id: result.orderId }, moneyPaths(OrderModel.schema));
+    const lineTypes = await typesOf("orderlines", { orderId: result.orderId }, moneyPaths(OrderLineModel.schema));
+    for (const row of [...orderTypes, ...lineTypes]) {
+      for (const [path, type] of Object.entries(row).filter(([key]) => key !== "_id")) expect([path, type]).toEqual([path, expect.stringMatching(/^(double|missing)$/)]);
+    }
+    expect(orderTypes[0]).toMatchObject({ subtotal: "double", discount: "double", tax: "double", total: "double", refundedTotal: "double", fulfilment_fee: "double" });
+    expect(lineTypes[0]).toMatchObject({ unitPrice: "double", lineTotal: "double", lineDiscount: "double" });
   });
 
   it("empties the cart on success", async () => {

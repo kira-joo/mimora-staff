@@ -58,3 +58,45 @@ node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local 
 node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local --confirm-target-db=<target db>
 node scripts/migrations/copy-store-to-target.mjs --target-env=.env.target.local --verify
 ```
+
+## Money storage: Decimal128 → BSON Double (`money-to-double.mjs`)
+
+Since 2026-11-18 Mimora stores money as BSON Double (`src/server/core/money/money-double-field.ts`; calculation stays
+`Decimal`, the wire stays a decimal string). The application reads both `Decimal128` and Double, so existing records keep
+working before, during and after this migration. It converts **only** the 25 money fields listed in the script (a test
+keeps that list equal to the schemas), and reports — never touches — a `Decimal128` found anywhere else.
+
+**Dry run is the default and is read-only.** It is also the production audit: per collection the document count; per
+money field the count by BSON type (decimal, double, int, long, string, null, missing, …), every value that will NOT be
+converted with its `_id` and the reason (string, object, negative, more than two decimals, non-finite, too large), an
+exact fingerprint (count and decimal sum), and any `Decimal128` outside the money fields.
+
+```bash
+# 1. Audit + plan (writes nothing). The env file holds MONGODB_URI and MONGODB_DB; it is read in-process, never printed.
+node scripts/migrations/money-to-double.mjs --env-file=.env.atlas.local
+
+# 2. Back up the eight affected collections (and take an Atlas snapshot if the plan has one).
+mongodump --uri="$MONGODB_URI" --db="$MONGODB_DB" --out=backup-money-$(date +%Y%m%d-%H%M) \
+  --collection=variants   # repeat --collection for: products deliveryzones fulfilmentsettings orders orderlines returns promotions
+#    (mongodump takes one --collection per run; run it once per collection, or omit --collection to dump the database.)
+
+# 3. Execute — requires the database name typed exactly. Logs every change to scripts/migrations/money-to-double-logs/.
+node scripts/migrations/money-to-double.mjs --env-file=.env.atlas.local --execute --confirm-db=<MONGODB_DB>
+
+# 4. Verify (read-only): no convertible Decimal128 left, every logged change still in place and amount-identical.
+node scripts/migrations/money-to-double.mjs --env-file=.env.atlas.local --verify --log=scripts/migrations/money-to-double-logs/<file>.jsonl
+```
+
+An execute fingerprints every field before and after (count and exact sum must be identical) and verifies its own
+change log; either failing exits non-zero. Each update matches on the value it read, so a document the shop changes
+mid-run is skipped, not overwritten — run again and it is picked up. A second run converts nothing. Writes go through
+the raw driver: `updatedAt` is not bumped and nothing else in a document changes.
+
+**Rollback.** Preferred: `--reverse` (dry run first, then `--reverse --execute --confirm-db=<db>`) converts every Double
+money value back to `Decimal128` at two decimals — lossless, since every value is two-decimal. If the *code* must also be
+rolled back to a version that only reads `Decimal128`: run `--reverse --execute` while the new code is still serving
+(it reads both), deploy the old code, then run `--reverse --execute` once more to catch anything written in between.
+Last resort: `mongorestore` from the step-2 backup.
+
+`copy-store-to-target.mjs` compares documents type-sensitively; copy only between databases on the same side of this
+migration.

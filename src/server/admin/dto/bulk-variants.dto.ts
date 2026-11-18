@@ -1,8 +1,10 @@
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsInt, IsMongoId, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min, ValidateNested } from "class-validator";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
 /** Matches a non-negative decimal amount with up to 2 fraction digits — the shape `toMoney()` accepts as a string. */
-const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
+// The one money pattern (bounded to what a BSON Double stores exactly) — see money-input.ts.
+const MONEY_STRING_PATTERN = MONEY_INPUT_PATTERN;
 const MONEY_STRING_MESSAGE = "must be a non-negative decimal amount, e.g. \"10.00\".";
 
 /** A product's matrix is bounded (three axes, a few dozen values); this also bounds one transaction. */

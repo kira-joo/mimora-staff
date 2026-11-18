@@ -30,7 +30,7 @@ afterAll(async () => {
  * since nothing checks a hand-written field against its TS interface.
  */
 describe("Product.listing — money round-trip", () => {
-  it("rounds and persists as Decimal128, and sanitizeLeanResult revives a real Decimal on read", async () => {
+  it("rounds and persists as BSON Double, and sanitizeLeanResult revives a real Decimal on read", async () => {
     const category = await CategoryModel.create({ slug: "electronics" });
     const product = await ProductModel.create({
       slug: "test-product",
@@ -43,9 +43,10 @@ describe("Product.listing — money round-trip", () => {
     expect(product.listing.minActivePrice?.toFixed(2)).toBe("20.00"); // rounded half-up at MONEY_SCALE
     expect(product.listing.maxActivePrice?.toFixed(2)).toBe("50.00");
 
-    // A raw driver read proves it is Decimal128 at rest, not a float or a string.
+    // MongoDB's own $type proves it is a BSON double at rest — not Int32 (20 is a whole number), not a string.
+    expect(await storedType(product._id, "listing.minActivePrice")).toBe("double");
     const raw = await mongoose.connection.collection("products").findOne({ _id: product._id });
-    expect(raw?.listing.minActivePrice?._bsontype).toBe("Decimal128");
+    expect(raw?.listing.minActivePrice).toBe(20);
 
     // A lean read needs sanitizeLeanResult to revive Money — the getter never runs on .lean().
     const lean = sanitizeLeanResult(await ProductModel.findById(product._id).lean());
@@ -59,8 +60,13 @@ describe("Product.listing — money round-trip", () => {
 
     await ProductModel.updateOne({ _id: product._id }, { $set: { "listing.minActivePrice": toMoney("12.345") } });
 
+    expect(await storedType(product._id, "listing.minActivePrice")).toBe("double");
     const raw = await mongoose.connection.collection("products").findOne({ _id: product._id });
-    expect(raw?.listing.minActivePrice?._bsontype).toBe("Decimal128");
-    expect(raw?.listing.minActivePrice?.toString()).toBe("12.35"); // rounded, not stored raw
+    expect(raw?.listing.minActivePrice).toBe(12.35); // rounded, not stored raw
   });
 });
+
+async function storedType(id: mongoose.Types.ObjectId, path: string) {
+  const [row] = await mongoose.connection.collection("products").aggregate([{ $match: { _id: id } }, { $project: { type: { $type: `$${path}` } } }]).toArray();
+  return row?.type;
+}

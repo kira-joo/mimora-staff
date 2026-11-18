@@ -303,7 +303,8 @@ describe("Admin Payments", () => {
 
     it("refundPayment: the reserved refundedTotal, refund record, status and timeline all revert", async () => {
       const order = await seedOrder("VERIFIED");
-      failAfterWrite(orderRepository, "updateAtomic", 3); // 1 = reserveOrderRefund, 2 = status $set, 3 = timeline $push
+      // reserveOrderRefund is a pipeline update on the model (not updateAtomic) and lands first; 1 = status $set, 2 = timeline $push
+      failAfterWrite(orderRepository, "updateAtomic", 2);
 
       await expect(
         refundPayment({ orderId: order._id.toString(), amount: toMoney("100.00"), reference: "TXN-3", staffId: staff(), now: new Date() })

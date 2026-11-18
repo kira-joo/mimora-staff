@@ -433,7 +433,8 @@ describe("Admin Returns", () => {
       const order = await seedOrder();
       const { orderLine } = await seedVariantAndOrderLine(order._id);
       const { ret } = await seedReturn(order._id, orderLine._id, "APPROVED");
-      failAfterWrite(orderRepository, "updateAtomic", 2); // 1 = reserveOrderRefund, 2 = timeline $push (after the return write)
+      // reserveOrderRefund is a pipeline update on the model (not updateAtomic) and lands first; 1 = timeline $push (after the return write)
+      failAfterWrite(orderRepository, "updateAtomic", 1);
 
       await expect(
         refundReturn({ returnId: ret._id.toString(), refundReference: "TXN-1", amount: toMoney("20.00"), staffId: new mongoose.Types.ObjectId().toString(), now: new Date() })

@@ -113,10 +113,19 @@ before touching anything in the auth path.
 
 ## Non-negotiables
 
-1. **Money is never a float.** `Money` is `Decimal` in major units, stored as
-   BSON `Decimal128` via `moneyField()`. **Never take `moneyField(...).type`** —
-   it keeps the BSON type and silently drops the rounding setter and the reviving
-   getter. Currency is not part of an amount; `StoreProfile` carries it.
+1. **Money is never calculated as a float.** `Money` is `Decimal` in major
+   units in every engine; arithmetic never runs on JS numbers. **At rest, money
+   is BSON Double** (owner decision, 2026-11-18 — Mimora only; the toolkit's
+   `moneyField()` and every other application keep `Decimal128`). Declare money
+   with `moneyDoubleField()` (`src/server/core/money/money-double-field.ts`),
+   never the toolkit's `moneyField()` and never a plain `Number` (which stores
+   Int32). Storing a two-decimal amount as a double is lossless; summing or
+   comparing doubles in MongoDB is not — any pipeline that adds, sums or
+   compares money converts with `$toDecimal` first (see `order-refunds.ts`,
+   `get-sales-summary.ts`, `mongo-catalog-search-port.ts`). Records written
+   before the change hold `Decimal128` until `scripts/migrations/money-to-double.mjs`
+   runs; every read path accepts both. On the wire money stays a decimal string.
+   Currency is not part of an amount; `StoreProfile` carries it.
 2. **A variant owns its price and its stock, absolutely.** There is no base
    price plus a delta — that model has two sources of truth for one price.
    `Product` carries no price and no stock.

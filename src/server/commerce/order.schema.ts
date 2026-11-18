@@ -3,10 +3,10 @@ import {
   MongoSchema,
   Relation,
   Unique,
-  moneyField,
   createMongoModel,
   localizedStringSchema,
 } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { LocalizedString, Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -185,7 +185,7 @@ export class OrderSchema {
         zone: { type: String, required: false },
         /** Informational reference to the `DeliveryZone` the snapshot above was resolved from at placement time — never re-read; a zone changing or being soft-deleted later must not alter this order. */
         zoneId: { type: mongoose.Schema.Types.ObjectId, required: false },
-        fee: moneyField({ required: true }),
+        fee: moneyDoubleField({ required: true }),
         dispatchBy: { type: Date, required: false },
         /**
          * Set on delivery orders placed under the "estimate counts from confirmation" rule: confirming the order
@@ -232,16 +232,16 @@ export class OrderSchema {
     promisedWindow?: { from: Date; to: Date };
   };
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   subtotal!: Money;
 
-  @MongoField(moneyField({ defaultZero: true }))
+  @MongoField(moneyDoubleField({ defaultZero: true }))
   discount!: Money;
 
-  @MongoField(moneyField({ defaultZero: true }))
+  @MongoField(moneyDoubleField({ defaultZero: true }))
   tax!: Money;
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   total!: Money;
 
   /**
@@ -252,7 +252,7 @@ export class OrderSchema {
    * the one place the "cumulative refunds never exceed what was paid"
    * invariant is enforced, and the document two concurrent refunds conflict on.
    */
-  @MongoField(moneyField({ defaultZero: true }))
+  @MongoField(moneyDoubleField({ defaultZero: true }))
   refundedTotal!: Money;
 
   /**
@@ -339,7 +339,7 @@ export class OrderSchema {
               by: { type: mongoose.Schema.Types.ObjectId, required: false },
               at: { type: Date, required: false },
               reference: { type: String, required: false },
-              amount: moneyField(),
+              amount: moneyDoubleField(),
             },
             { _id: false }
           ),
@@ -496,7 +496,7 @@ export class OrderSchema {
         automatic: { type: Boolean, required: true },
         name: { type: localizedStringSchema(), required: true },
         type: { type: String, enum: ["PERCENT", "FIXED", "FREE_SHIPPING"], required: true },
-        value: moneyField({ required: false }),
+        value: moneyDoubleField({ required: false }),
       },
       { _id: false }
     ),
@@ -570,10 +570,10 @@ export class OrderLineSchema {
   @MongoField({ type: Number, required: true, min: 1 })
   quantity!: number;
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   unitPrice!: Money;
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   lineTotal!: Money;
 
   /**
@@ -581,7 +581,7 @@ export class OrderLineSchema {
    * this, never the variant's current cost: a cost changed later must not rewrite the margin of a past sale,
    * and a sale placed without the snapshot can never recover it.
    */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   unitCost?: Money;
 
   /**
@@ -590,7 +590,7 @@ export class OrderLineSchema {
   @MongoField({ type: String, required: false })
   promotionCode?: string;
 
-  @MongoField(moneyField({ defaultZero: true }))
+  @MongoField(moneyDoubleField({ defaultZero: true }))
   lineDiscount!: Money;
 }
 

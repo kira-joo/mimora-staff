@@ -8,9 +8,9 @@ import {
   localizedStringField,
   localizedStringSchema,
   imageAssetField,
-  moneyField,
   createMongoModel,
 } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { LocalizedString, ImageAsset, Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -255,18 +255,18 @@ export class ProductSchema {
    */
   @MongoField({
     /*
-     * `moneyField()` is passed whole, not `.type` — the whole object carries
+     * `moneyDoubleField()` is passed whole, not `.type` — the whole object carries
      * the rounding setter and reviving getter, and this repo's own
      * `CLAUDE.md` names taking only `.type` as the exact silent-corruption
-     * mistake to avoid. `moneyField()`'s own doc comment shows this precise
+     * mistake to avoid. `moneyDoubleField()`'s own doc comment shows this precise
      * "inside a hand-written sub-schema" usage.
      */
     type: new mongoose.Schema(
       {
-        minActivePrice: moneyField(),
-        maxActivePrice: moneyField(),
+        minActivePrice: moneyDoubleField(),
+        maxActivePrice: moneyDoubleField(),
         /** Cheapest purchasable variant's compare-at, only when it exceeds that variant's price — the listing's "Sale" signal. */
-        compareAtPrice: moneyField(),
+        compareAtPrice: moneyDoubleField(),
         purchasableVariantCount: { type: Number, required: true, default: 0 },
         /*
          * `key:value` option pairs (`size:m`) present on at least one PURCHASABLE variant — the filterable,
@@ -283,8 +283,8 @@ export class ProductSchema {
          * `@MongoField()` decorator can accept it), and `unknown` cannot be
          * matched against `SchemaDefinitionProperty` inside a hand-written
          * `new mongoose.Schema({...})` literal — the exact class of failure
-         * `moneyField()`'s own doc comment describes and defines a narrower
-         * `MoneyFieldDefinition` type specifically to avoid.
+         * `moneyDoubleField()`'s own doc comment describes and defines a narrower
+         * `MoneyDoubleFieldDefinition` type specifically to avoid.
          * `imageAssetField()` has no equivalent narrow type, so the fields
          * are written out here instead.
          */

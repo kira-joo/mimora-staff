@@ -1,6 +1,7 @@
 import { IMPORT_COLUMNS, PRODUCT_LEVEL_COLUMNS, REQUIRED_IMPORT_COLUMNS, normalizeHeader, type ImportColumn } from "./import-columns";
 import { CsvSyntaxError, parseCsv } from "./csv";
 import { MAX_IMPORT_VARIANT_ROWS, type ImportAttribute, type ImportAxis, type ImportIssue, type ImportProduct, type ImportProductStatus, type ImportVariantRow } from "./import-types";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
 /** The file cannot be read as a catalog at all — no batch is staged, the person fixes the file and uploads again. */
 export class ImportFileError extends Error {
@@ -20,7 +21,7 @@ export interface ParsedCatalogCsv {
 
 const SLUG = /^[^\s/?#%]{1,200}$/;
 const AXIS_KEY = /^[A-Za-z0-9][A-Za-z0-9_-]{0,49}$/;
-const MONEY = /^\d+(\.\d{1,2})?$/;
+const MONEY = MONEY_INPUT_PATTERN; // the one money pattern — see money-input.ts
 const WHOLE = /^\d+$/;
 const MEASURE = /^\d+(\.\d+)?$/;
 /** Characters the variant key and the cell sub-formats use as separators; a value containing one could not be read back. */

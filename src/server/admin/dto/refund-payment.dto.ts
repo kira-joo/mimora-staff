@@ -1,8 +1,10 @@
 import { Trim } from "@kira-joo/backend-toolkit-core";
 import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from "class-validator";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
 /** Matches a non-negative decimal amount with up to 2 fraction digits — same shape `toMoney()` accepts as a string. Precedent: `ListStorefrontProductsQueryDto`. */
-const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
+// The one money pattern (bounded to what a BSON Double stores exactly) — see money-input.ts.
+const MONEY_STRING_PATTERN = MONEY_INPUT_PATTERN;
 
 export class RefundPaymentDto {
   /** Required: a refund records exactly the money that moved, never a default. Must be > 0 and fit the order's refundable remainder. */

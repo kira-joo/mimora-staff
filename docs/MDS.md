@@ -235,12 +235,18 @@ hidden, the `id` virtual disabled, uniqueness only via `@Unique()`.** Default
 sort `{ createdAt: -1 }` where timestamps exist, else `{ _id: -1 }`. No
 Typegoose, no `@nestjs/mongoose`.
 
-**Money is `Decimal` in major units at `MONEY_SCALE`, everywhere, including at
-rest as BSON `Decimal128`.** Declared with `moneyField()`.
+**Money is `Decimal` in major units at `MONEY_SCALE` in every calculation, and
+BSON Double at rest** (changed from `Decimal128` on 2026-11-18 by owner
+decision; see `CLAUDE.md` non-negotiable 1). Declared with
+`moneyDoubleField()` from `src/server/core/money/money-double-field.ts` — never
+the toolkit's `moneyField()` (Decimal128) and never a plain `Number` (Int32 for
+whole amounts). Any aggregation that sums or compares money uses `$toDecimal`;
+records from before the change hold `Decimal128` until
+`scripts/migrations/money-to-double.mjs` converts them, and every read accepts
+both.
 
-> **Never take `moneyField(...).type`.** It keeps the BSON type and silently
-> discards the rounding setter and the reviving getter, so amounts store
-> unrounded and hydrated reads hand back raw `Decimal128`.
+> **Never take `moneyDoubleField(...).type`.** It keeps the BSON type and
+> silently discards the rounding setter and the reviving getter.
 
 > **A hand-written `@MongoField({ type: … })` is not checked against the
 > TypeScript interface beside it.** The runtime schema and the interface are two

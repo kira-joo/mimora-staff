@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * Copies the store data a new deployment needs (catalog, settings, content) from one database to another, byte-for-byte:
- * every document keeps its _id and every BSON type (Decimal128 prices, ObjectId references, dates).
+ * every document keeps its _id and every BSON type (money as BSON Double — or Decimal128 on a database not yet migrated — ObjectId references, dates).
  *
  * It NEVER overwrites. A document already in the target with the same _id is compared: identical is "already copied",
  * different is a conflict, and any conflict stops the run before anything is written. The writes run in one
@@ -113,8 +113,11 @@ function* objectIds(value, path = "") {
 async function plan(source, target) {
   const result = [];
   for (const name of COLLECTIONS) {
-    const docs = await source.collection(name).find({}).sort({ _id: 1 }).toArray();
-    const targetDocs = await target.collection(name).find({}).toArray();
+    // promoteValues: false — a whole-valued BSON Double (Mimora money, e.g. 30) must be copied as a Double; promoted to
+    // a JS number and reinserted, the driver would write it as Int32. Both sides are read the same way, so the
+    // canonical comparisons below stay byte-for-byte.
+    const docs = await source.collection(name).find({}, { promoteValues: false }).sort({ _id: 1 }).toArray();
+    const targetDocs = await target.collection(name).find({}, { promoteValues: false }).toArray();
     const sourceById = new Map(docs.map((d) => [canonical(d._id), d]));
     const targetById = new Map(targetDocs.map((d) => [canonical(d._id), d]));
 
@@ -164,10 +167,10 @@ async function verify(source, target) {
   let ok = true;
   console.log("\ncollection              source  target  identical");
   for (const name of COLLECTIONS) {
-    const docs = await source.collection(name).find({}).toArray();
+    const docs = await source.collection(name).find({}, { promoteValues: false }).toArray();
     let identical = 0;
     for (const doc of docs) {
-      const copy = await target.collection(name).findOne({ _id: doc._id });
+      const copy = await target.collection(name).findOne({ _id: doc._id }, { promoteValues: false });
       if (copy && canonical(copy) === canonical(doc)) identical += 1;
     }
     const targetCount = await target.collection(name).countDocuments();

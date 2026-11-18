@@ -62,15 +62,15 @@ describe("delivery zone minimumOrder", () => {
 
   it("can be set, changed, left alone, and cleared", async () => {
     const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, minimumOrder: "100" });
-    expect((await rawZone(body._id))?.minimumOrder.toString()).toBe("100.00");
+    expect((await rawZone(body._id))?.minimumOrder).toBe(100);
 
     await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { minimumOrder: "150" }, body._id);
-    expect((await rawZone(body._id))?.minimumOrder.toString()).toBe("150.00");
+    expect((await rawZone(body._id))?.minimumOrder).toBe(150);
 
     await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { fee: "35" }, body._id);
     const afterOmit = await rawZone(body._id);
-    expect(afterOmit?.minimumOrder.toString()).toBe("150.00");
-    expect(afterOmit?.fee.toString()).toBe("35.00");
+    expect(afterOmit?.minimumOrder).toBe(150);
+    expect(afterOmit?.fee).toBe(35);
 
     const cleared = await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { minimumOrder: null }, body._id);
     expect(cleared.status).toBe(200);
@@ -79,14 +79,22 @@ describe("delivery zone minimumOrder", () => {
 
   it("keeps zero as a value — a zone with explicitly no minimum", async () => {
     const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, minimumOrder: "0" });
-    expect((await rawZone(body._id))?.minimumOrder.toString()).toBe("0.00");
+    expect((await rawZone(body._id))?.minimumOrder).toBe(0);
   });
 
   it("still validates a value, and refuses to clear the required fee", async () => {
     const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", zone);
     expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { minimumOrder: "abc" }, body._id)).status).toBe(400);
     expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { fee: null }, body._id)).status).toBe(400);
-    expect((await rawZone(body._id))?.fee.toString()).toBe("30.00");
+    expect((await rawZone(body._id))?.fee).toBe(30);
+  });
+
+  it("refuses an amount too large to store exactly as a double — a 400, never stored approximately", async () => {
+    const created = await send(createZone, "/api/admin/delivery-zones", "POST", { ...zone, fee: "1000000000000000.01" });
+    expect(created.status).toBe(400);
+    const { body } = await send(createZone, "/api/admin/delivery-zones", "POST", zone);
+    expect((await send(updateZone, `/api/admin/delivery-zones/${body._id}`, "PUT", { minimumOrder: "10000000000000.00" }, body._id)).status).toBe(400);
+    expect(await rawZone(body._id)).not.toHaveProperty("minimumOrder");
   });
 });
 
@@ -94,19 +102,19 @@ describe("fulfilment settings orderMinimum, flatShippingFee, cutoffTime", () => 
   it("can be set, changed, left alone, and cleared one at a time", async () => {
     expect((await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { orderMinimum: "200", flatShippingFee: "40", cutoffTime: "18:00" })).status).toBe(200);
     let stored = await rawSettings();
-    expect(stored?.orderMinimum.toString()).toBe("200.00");
-    expect(stored?.flatShippingFee.toString()).toBe("40.00");
+    expect(stored?.orderMinimum).toBe(200);
+    expect(stored?.flatShippingFee).toBe(40);
     expect(stored?.cutoffTime).toBe("18:00");
 
     await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { cutoffTime: "20:30" });
     stored = await rawSettings();
     expect(stored?.cutoffTime).toBe("20:30");
-    expect(stored?.orderMinimum.toString()).toBe("200.00");
+    expect(stored?.orderMinimum).toBe(200);
 
     await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { orderMinimum: null });
     stored = await rawSettings();
     expect(stored).not.toHaveProperty("orderMinimum");
-    expect(stored?.flatShippingFee.toString()).toBe("40.00");
+    expect(stored?.flatShippingFee).toBe(40);
 
     await send(updateSettings, "/api/admin/fulfilment-settings", "PUT", { flatShippingFee: null, cutoffTime: null });
     stored = await rawSettings();

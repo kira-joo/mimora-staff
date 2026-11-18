@@ -34,8 +34,10 @@ export interface GetSalesSummaryInput {
  * Refunds of a cancelled order are left out, as its sales are.
  *
  * An `aggregate`, not a repository call: grouping by period has no
- * repository equivalent. `total` is summed as `Decimal128` inside the
- * database, so revenue is exact before it ever reaches JavaScript.
+ * repository equivalent. Every amount is summed as a decimal inside the
+ * database (`$toDecimal` — money is stored as BSON Double, older records as
+ * Decimal128, and a sum of doubles is not exact), so revenue is exact before
+ * it ever reaches JavaScript.
  */
 export async function getSalesSummary(input: GetSalesSummaryInput): Promise<SalesSummary> {
   const granularity = input.granularity ?? "day";
@@ -57,7 +59,7 @@ export async function getSalesSummary(input: GetSalesSummaryInput): Promise<Sale
   const orders: Array<{ _id: string; orderCount: number; grossSales: Money }> = sanitizeLeanResult(
     await OrderModel.aggregate([
       { $match: { placedAt: inRange, status: { $ne: "CANCELLED" } } },
-      { $group: { _id: bucketOf("$placedAt"), orderCount: { $sum: 1 }, grossSales: { $sum: "$total" } } },
+      { $group: { _id: bucketOf("$placedAt"), orderCount: { $sum: 1 }, grossSales: { $sum: { $toDecimal: "$total" } } } },
     ])
   );
 
@@ -65,7 +67,7 @@ export async function getSalesSummary(input: GetSalesSummaryInput): Promise<Sale
   const paymentRefunds: Array<{ _id: string; refunds: Money }> = sanitizeLeanResult(
     await OrderModel.aggregate([
       { $match: { "payment.status": "REFUNDED", "payment.refund.at": inRange, status: { $ne: "CANCELLED" } } },
-      { $group: { _id: bucketOf("$payment.refund.at"), refunds: { $sum: "$payment.refund.amount" } } },
+      { $group: { _id: bucketOf("$payment.refund.at"), refunds: { $sum: { $toDecimal: "$payment.refund.amount" } } } },
     ])
   );
 
@@ -77,7 +79,7 @@ export async function getSalesSummary(input: GetSalesSummaryInput): Promise<Sale
       { $match: { status: "REFUNDED", processedAt: inRange } },
       { $lookup: { from: OrderModel.collection.name, localField: "orderId", foreignField: "_id", as: "order", pipeline: [{ $project: { status: 1 } }] } },
       { $match: { "order.status": { $ne: "CANCELLED" } } },
-      { $group: { _id: bucketOf("$processedAt"), refunds: { $sum: "$refundAmount" } } },
+      { $group: { _id: bucketOf("$processedAt"), refunds: { $sum: { $toDecimal: "$refundAmount" } } } },
     ])
   );
 

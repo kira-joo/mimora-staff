@@ -3,10 +3,10 @@ import {
   MongoSchema,
   Relation,
   Unique,
-  moneyField,
   imageAssetField,
   createMongoModel,
 } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { Money, ImageAsset } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -63,10 +63,10 @@ export class VariantSchema {
   })
   optionValues!: Array<{ key: string; value: string }>;
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   price!: Money;
 
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   compareAtPrice?: Money;
 
   /**
@@ -112,7 +112,7 @@ export class VariantSchema {
    * Cost price — captured in v1, reported in v2.
    * Must be snapshotted at sale or it is unrecoverable for margin reporting.
    */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   costPrice?: Money;
 
   /**

@@ -1,7 +1,11 @@
 import { BaseFindQueryDto, ToArray, ToBoolean } from "@kira-joo/backend-toolkit-core";
 import { IsBoolean, IsIn, IsMongoId, IsOptional, Matches } from "class-validator";
 
-/** Matches a non-negative decimal amount with up to 2 fraction digits — the same shape `toMoney()` accepts as a string. */
+/**
+ * Matches a non-negative decimal amount with up to 2 fraction digits. Deliberately NOT the bounded stored-money pattern
+ * (`MONEY_INPUT_PATTERN`): a price filter is never stored, and a shopper typing a huge bound should get an empty result,
+ * not an error.
+ */
 const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
 
 /** `key:value` — a non-empty key with no colon, then a non-empty value. */

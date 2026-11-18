@@ -91,3 +91,14 @@ describe("parseCatalog", () => {
     expect(parseCatalog([]).errors).toEqual(['catalog.json must be a JSON object with a "products" array.']);
   });
 });
+
+describe("money pattern", () => {
+  it("is the server's: up to 13 digits before the point, refused beyond (a double cannot hold the cents)", async () => {
+    const { MONEY_INPUT_PATTERN } = await import("../../src/common/format/money-input");
+    for (const value of ["0", "249.99", "9999999999999.99", "10000000000000", "1000000000000000.01", "1.999", "-1"]) {
+      const variants = [{ sku: "SKU-a", optionValues: [], price: value, stock: 1 }];
+      const accepted = !parseCatalog({ products: [product("a", { variants })] }).errors.some((error) => error.includes("price"));
+      expect([value, accepted]).toEqual([value, MONEY_INPUT_PATTERN.test(value)]);
+    }
+  });
+});

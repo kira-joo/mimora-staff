@@ -1,6 +1,6 @@
 import { BaseFindQueryDto } from "@kira-joo/backend-toolkit-core";
 import { resolvePagination } from "@kira-joo/backend-toolkit-mongoose";
-import { SortOrder, type PaginatedResponse } from "@kira-joo/toolkit-common";
+import { MONEY_SCALE, SortOrder, roundMoney, type PaginatedResponse } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 import { BrandModel } from "../brand.schema";
 import { CategoryModel } from "../category.schema";
@@ -68,7 +68,8 @@ export const mongoCatalogSearchPort: CatalogSearchPort = {
       ]),
       ProductModel.aggregate<{ min?: mongoose.Types.Decimal128; max?: mongoose.Types.Decimal128 }>([
         { $match: base },
-        { $group: { _id: null, min: { $min: "$listing.minActivePrice" }, max: { $max: "$listing.maxActivePrice" } } },
+        // `$toDecimal`, so the range is exact whether a record holds Double or (older) Decimal128.
+        { $group: { _id: null, min: { $min: { $toDecimal: "$listing.minActivePrice" } }, max: { $max: { $toDecimal: "$listing.maxActivePrice" } } } },
       ]),
       ProductModel.aggregate<{ _id: { attributeKey: string; valueKey: string }; count: number }>([
         { $match: base },
@@ -88,7 +89,8 @@ export const mongoCatalogSearchPort: CatalogSearchPort = {
     return {
       categories: categories.map((entry) => ({ key: entry._id.toString(), count: entry.count })),
       brands: brands.map((entry) => ({ key: entry._id.toString(), count: entry.count })),
-      priceRange: { min: priceRange[0]?.min?.toString(), max: priceRange[0]?.max?.toString() },
+      // Two decimals, as the stored Decimal128 always printed ("19.50"); `$toDecimal` of a double prints 15 digits.
+      priceRange: { min: facetPrice(priceRange[0]?.min), max: facetPrice(priceRange[0]?.max) },
       attributes: groupAttributeFacets(attributes),
       options: groupOptionFacets(options),
       inStockCount: inStock,
@@ -118,6 +120,11 @@ async function buildScopeFilter(scope: CatalogScope, options: { includeSearch: b
  * `categoryId`), so spreading them into one object would let a later clause
  * silently overwrite an earlier one; `$and` cannot collide.
  */
+/** A facet bound as the two-decimal string the stored Decimal128 always printed ("19.50"), or undefined when absent. */
+function facetPrice(value: mongoose.Types.Decimal128 | null | undefined): string | undefined {
+  return value === null || value === undefined ? undefined : roundMoney(value.toString()).toFixed(MONEY_SCALE);
+}
+
 function composeFilter(clauses: Array<Record<string, unknown>>): Record<string, unknown> {
   const present = clauses.filter((clause) => Object.keys(clause).length > 0);
   return present.length === 0 ? {} : present.length === 1 ? present[0]! : { $and: present };
@@ -179,8 +186,10 @@ async function searchByPrice(filter: Record<string, unknown>, sort: Exclude<Cata
     ProductModel.countDocuments(filter),
     ProductModel.aggregate<{ _id: mongoose.Types.ObjectId }>([
       { $match: filter },
-      { $addFields: { noPrice: { $cond: [{ $in: [{ $type: "$listing.minActivePrice" }, ["missing", "null"]] }, 1, 0] } } },
-      { $sort: { noPrice: 1, "listing.minActivePrice": direction, createdAt: -1, _id: -1 } },
+      // `sortPrice` in decimal: a Double 19.99 and an (older) Decimal128 19.99 are then equal, so the createdAt/_id
+      // tie-breakers decide between them, as they did when every record had the same type.
+      { $addFields: { noPrice: { $cond: [{ $in: [{ $type: "$listing.minActivePrice" }, ["missing", "null"]] }, 1, 0] }, sortPrice: { $toDecimal: "$listing.minActivePrice" } } },
+      { $sort: { noPrice: 1, sortPrice: direction, createdAt: -1, _id: -1 } },
       { $skip: pagination.skip },
       { $limit: pagination.limit },
       { $project: { _id: 1 } },
@@ -200,10 +209,26 @@ async function searchByPrice(filter: Record<string, unknown>, sort: Exclude<Cata
 }
 
 /** A product matches when its own active price range OVERLAPS the query's — not merely when one bound falls inside it, since a product spanning $10-$50 is relevant to a $20-$30 query even though neither of its own bounds sits in that range. */
+/**
+ * Compared in decimal (`$toDecimal`), because a listing price is stored as BSON Double (older records: Decimal128)
+ * and MongoDB compares mixed numeric types by exact value: a stored double 19.99 is 19.989999…, so `>= 19.99` as a
+ * Decimal128 bound would drop a product priced exactly at the bound, and a double bound would do the same to a
+ * Decimal128 record. `$toDecimal` reads a double through its shortest decimal form, so both compare as 19.99.
+ * `$type: "number"` keeps the old filter's behaviour of never matching a product with no price (in `$expr`, null
+ * sorts below every number and would otherwise pass a `$lte`).
+ */
 function buildPriceRangeFilter(minPrice: string | undefined, maxPrice: string | undefined): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
-  if (maxPrice !== undefined) filter["listing.minActivePrice"] = { $lte: mongoose.Types.Decimal128.fromString(maxPrice) };
-  if (minPrice !== undefined) filter["listing.maxActivePrice"] = { $gte: mongoose.Types.Decimal128.fromString(minPrice) };
+  const conditions: unknown[] = [];
+  if (maxPrice !== undefined) {
+    filter["listing.minActivePrice"] = { $type: "number" };
+    conditions.push({ $lte: [{ $toDecimal: "$listing.minActivePrice" }, mongoose.Types.Decimal128.fromString(maxPrice)] });
+  }
+  if (minPrice !== undefined) {
+    filter["listing.maxActivePrice"] = { $type: "number" };
+    conditions.push({ $gte: [{ $toDecimal: "$listing.maxActivePrice" }, mongoose.Types.Decimal128.fromString(minPrice)] });
+  }
+  if (conditions.length > 0) filter.$expr = conditions.length === 1 ? conditions[0] : { $and: conditions };
   return filter;
 }
 

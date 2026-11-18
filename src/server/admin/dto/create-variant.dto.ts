@@ -17,9 +17,11 @@ import {
 import type { ImageAsset } from "@kira-joo/toolkit-common";
 import { ImageAssetDto } from "@kira-joo/backend-toolkit-core";
 import { UNITS_OF_MEASURE, type UnitOfMeasure } from "../../catalog/variant.schema";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
 /** Matches a non-negative decimal amount with up to 2 fraction digits — the same shape `toMoney()` accepts as a string. Precedent: `ListStorefrontProductsQueryDto`. */
-const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
+// The one money pattern (bounded to what a BSON Double stores exactly) — see money-input.ts.
+const MONEY_STRING_PATTERN = MONEY_INPUT_PATTERN;
 const MONEY_STRING_MESSAGE = "must be a non-negative decimal amount, e.g. \"10.00\".";
 
 class OptionValueDto {

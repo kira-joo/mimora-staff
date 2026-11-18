@@ -2,9 +2,9 @@ import {
   MongoField,
   MongoSchema,
   Relation,
-  moneyField,
   createMongoModel,
 } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -50,7 +50,7 @@ export class ReturnSchema {
   @MongoField({ type: String, required: false })
   refundReference?: string;
 
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   refundAmount?: Money;
 
   @MongoField({ type: String, required: false })

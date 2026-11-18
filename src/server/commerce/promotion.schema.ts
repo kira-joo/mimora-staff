@@ -3,9 +3,9 @@ import {
   MongoSchema,
   Unique,
   localizedStringField,
-  moneyField,
   createMongoModel,
 } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { LocalizedString, Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -46,11 +46,12 @@ export class PromotionSchema {
    */
   /**
    * An exact decimal, never a float: a percentage (0–100) for PERCENT, an
-   * amount in major units for FIXED, absent for FREE_SHIPPING. Stored as
-   * Decimal128 through `moneyField` — the store's one exact-decimal field —
-   * and sent as a decimal string, like every amount.
+   * amount in major units for FIXED, absent for FREE_SHIPPING. Stored as a
+   * BSON Double through `moneyDoubleField` (a percentage at two decimals is as
+   * exact there as an amount), calculated as `Decimal`, and sent as a decimal
+   * string, like every amount.
    */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   value?: Money;
 
   /**
@@ -61,7 +62,7 @@ export class PromotionSchema {
   @MongoField({
     type: new mongoose.Schema(
       {
-        minSubtotal: moneyField(),
+        minSubtotal: moneyDoubleField(),
         categories: { type: [mongoose.Schema.Types.ObjectId], default: () => [] },
         collections: { type: [mongoose.Schema.Types.ObjectId], default: () => [] },
         products: { type: [mongoose.Schema.Types.ObjectId], default: () => [] },

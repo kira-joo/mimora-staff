@@ -1,8 +1,10 @@
 import { Type } from "class-transformer";
 import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength, Min, ValidateNested } from "class-validator";
 import { LocalizedStringDto } from "@kira-joo/backend-toolkit-core";
+import { MONEY_INPUT_PATTERN } from "../../../common/format/money-input";
 
-const MONEY_STRING_PATTERN = /^\d+(\.\d{1,2})?$/;
+// The one money pattern (bounded to what a BSON Double stores exactly) — see money-input.ts.
+const MONEY_STRING_PATTERN = MONEY_INPUT_PATTERN;
 
 export class UpdateDeliveryZoneDto {
   @IsOptional()

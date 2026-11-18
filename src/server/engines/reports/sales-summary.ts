@@ -124,7 +124,7 @@ function requireCalendarDate(value: string): string {
  * Revenue is net: an order counts in the period it was placed, and a refund
  * counts against the period it happened in — a 10,000 September order
  * refunded 2,000 in October is +10,000 in September and −2,000 in October.
- * Every amount arrives exact (summed as `Decimal128` in the database); the
+ * Every amount arrives exact (summed as a decimal in the database, through `$toDecimal`); the
  * average is the one derived amount, rounded once on the division.
  */
 export function summarizeSales(input: {

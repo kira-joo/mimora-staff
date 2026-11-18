@@ -1,4 +1,5 @@
-import { Filterable, MongoField, MongoSchema, Searchable, createMongoModel, localizedStringField, moneyField } from "@kira-joo/backend-toolkit-mongoose";
+import { Filterable, MongoField, MongoSchema, Searchable, createMongoModel, localizedStringField } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { LocalizedString, Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -49,7 +50,7 @@ export class DeliveryZoneSchema {
   @MongoField({ type: [String], default: () => [] })
   areas!: string[];
 
-  @MongoField(moneyField({ required: true }))
+  @MongoField(moneyDoubleField({ required: true }))
   fee!: Money;
 
   /**
@@ -58,7 +59,7 @@ export class DeliveryZoneSchema {
    * has no default: a default zero would always win and silently disable the
    * store-wide one. Zero, when set, is a real "no minimum in this zone".
    */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   minimumOrder?: Money;
 
   /**

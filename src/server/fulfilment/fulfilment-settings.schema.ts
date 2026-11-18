@@ -1,4 +1,5 @@
-import { MongoField, MongoSchema, moneyField, createMongoModel } from "@kira-joo/backend-toolkit-mongoose";
+import { MongoField, MongoSchema, createMongoModel } from "@kira-joo/backend-toolkit-mongoose";
+import { moneyDoubleField } from "../core/money/money-double-field";
 import type { Money } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 
@@ -67,7 +68,7 @@ export class FulfilmentSettingsSchema {
   maxDaysAhead!: number;
 
   /** Store-wide fallback minimum — used for PICKUP orders (no zone applies) and as the floor when a matched `DeliveryZone.minimumOrder` is unset. */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   orderMinimum?: Money;
 
   /**
@@ -78,7 +79,7 @@ export class FulfilmentSettingsSchema {
   shippingFeeMode!: "FLAT" | "BY_ZONE";
 
   /** Only consulted when `shippingFeeMode === "FLAT"`. */
-  @MongoField(moneyField())
+  @MongoField(moneyDoubleField())
   flatShippingFee?: Money;
 
   @MongoField({ type: Boolean, default: true })
