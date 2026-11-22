@@ -21,6 +21,7 @@ import { storeTimeZone } from "../../core/config/store-timezone";
 import { resolveOrderPromotion } from "../order/resolve-order-promotion";
 import { cartFilterForActor } from "../cart/cart-actor-filter";
 import type { ShopActor } from "../shop-actor";
+import type { CartFulfilmentDraft } from "../../commerce/cart.schema";
 import type { QuoteLineView, QuoteUnavailableReason, QuoteView } from "./quote.types";
 import { resolveLineImage, resolveOptionLabels } from "./quote-line-display";
 import { CART_LINE_ORDER } from "../cart/cart-line-order";
@@ -29,6 +30,11 @@ export interface GenerateQuoteInput {
   actor: ShopActor;
   locale: "en" | "ar";
   now: Date;
+  /**
+   * Checkout's live delivery form (see QuoteQueryDto): shipping is priced for this governorate, or pending while it is
+   * empty, whatever fulfilment the cart saved earlier. A preview — nothing is written.
+   */
+  deliveryPreview?: { governorate: string };
 }
 
 /**
@@ -109,7 +115,13 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
   // Fulfilment is optional here: before the customer chooses it, shipping is
   // pending and the total excludes it. With nothing buyable there is nothing to
   // ship, so it stays pending too.
-  const draft = availableLines.length > 0 ? cart.fulfilmentDraft : undefined;
+  const saved = availableLines.length > 0 ? cart.fulfilmentDraft : undefined;
+  const preview = availableLines.length > 0 ? input.deliveryPreview : undefined;
+  const draft: Pick<CartFulfilmentDraft, "mode" | "pickupLocationId"> & { address?: { governorate: string } } | undefined = preview
+    ? preview.governorate
+      ? { mode: "DELIVERY", address: { governorate: preview.governorate } }
+      : undefined
+    : saved;
   let shippingResult: Extract<ReturnType<typeof resolveShipping>, { resolvable: true }> | undefined;
 
   if (draft) {
@@ -159,13 +171,15 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
     });
 
     if (!resolved.resolvable) {
-      throw new ConflictError(`Fulfilment is not available (${resolved.reason}).`);
+      // A governorate still being chosen that the store does not deliver to is not an error yet — shipping stays
+      // pending, and saving the full fulfilment reports it.
+      if (!preview) throw new ConflictError(`Fulfilment is not available (${resolved.reason}).`);
+    } else {
+      if (!meetsOrderMinimum(subtotal, resolved.orderMinimum)) {
+        throw new ConflictError("This order is below the minimum for the selected fulfilment option.");
+      }
+      shippingResult = resolved;
     }
-
-    if (!meetsOrderMinimum(subtotal, resolved.orderMinimum)) {
-      throw new ConflictError("This order is below the minimum for the selected fulfilment option.");
-    }
-    shippingResult = resolved;
   }
 
   const shippingFee = draft?.mode === "DELIVERY" && shippingResult ? shippingResult.fee : undefined;

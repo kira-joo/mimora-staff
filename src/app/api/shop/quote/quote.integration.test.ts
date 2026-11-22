@@ -7,6 +7,7 @@ import { CartLineModel } from "src/server/commerce/cart-line.schema";
 import { ProductModel } from "src/server/catalog/product.schema";
 import { VariantModel } from "src/server/catalog/variant.schema";
 import { FulfilmentSettingsModel } from "src/server/fulfilment/fulfilment-settings.schema";
+import { DeliveryZoneModel } from "src/server/fulfilment/delivery-zone.schema";
 import { callShopRoute, type ShopRouteHandler } from "../test-support/shop-route-harness";
 
 process.env.MONGODB_URI ??= "mongodb://localhost:27020/store-platform-staff-test?replicaSet=rs0&directConnection=true";
@@ -23,7 +24,7 @@ beforeAll(async () => {
   await connectToDatabase();
 });
 beforeEach(async () => {
-  await Promise.all([CartModel.deleteMany({}), CartLineModel.deleteMany({}), ProductModel.deleteMany({}), VariantModel.deleteMany({}), FulfilmentSettingsModel.deleteMany({})]);
+  await Promise.all([CartModel.deleteMany({}), CartLineModel.deleteMany({}), ProductModel.deleteMany({}), VariantModel.deleteMany({}), FulfilmentSettingsModel.deleteMany({}), DeliveryZoneModel.deleteMany({})]);
 });
 afterAll(async () => {
   await mongoose.disconnect();
@@ -121,5 +122,52 @@ describe("gift box & wrapping — PUT /api/shop/cart/gift-wrap, then the quote",
   it("refuses a value that is not true or false (400)", async () => {
     await seedGuestCart();
     expect((await tick("yes")).status).toBe(400);
+  });
+});
+
+describe("checkout's live governorate — POST /api/shop/quote?delivery=true&governorate=…", () => {
+  const quote = (search = "") => callShopRoute(POST, `/api/shop/quote${search}`, { method: "POST", headers: { "x-cart-token": "guest-token-1" } });
+  const CAIRO_SAVED = { mode: "DELIVERY", address: { recipientName: "Mona", phone: "01000000000", addressLine1: "1 Nile St", city: "Maadi", governorate: "Cairo" } };
+
+  async function seedByZone() {
+    await seedGuestCart();
+    await FulfilmentSettingsModel.updateOne({}, { $set: { shippingFeeMode: "BY_ZONE" } });
+    await DeliveryZoneModel.create([
+      { name: { en: "Cairo", ar: "القاهرة" }, areas: ["Cairo"], fee: toMoney(110), leadDays: 5, active: true, order: 0 },
+      { name: { en: "Aswan", ar: "أسوان" }, areas: ["Aswan"], fee: toMoney(135), leadDays: 5, active: true, order: 1 },
+    ]);
+    await CartModel.updateOne({ cartToken: "guest-token-1" }, { $set: { fulfilmentDraft: CAIRO_SAVED } });
+  }
+
+  it("without the form, the saved fulfilment prices shipping (unchanged behaviour)", async () => {
+    await seedByZone();
+    expect((await quote()).body).toMatchObject({ shippingFee: "110", shippingPending: false, total: "310" });
+  });
+
+  it("the governorate picked in the form wins over the saved one — before the rest of the address is filled", async () => {
+    await seedByZone();
+    const { status, body } = await quote("?delivery=true&governorate=Aswan");
+    expect(status).toBe(201);
+    expect(body).toMatchObject({ shippingFee: "135", shippingPending: false, total: "335" });
+    expect(body.fulfilment).toMatchObject({ mode: "DELIVERY", zone: "Aswan" });
+  });
+
+  it("no governorate chosen yet: shipping is pending, not the fee of an address saved earlier", async () => {
+    await seedByZone();
+    expect((await quote("?delivery=true")).body).toMatchObject({ shippingFee: null, shippingPending: true, total: "200" });
+  });
+
+  it("a governorate the store does not deliver to leaves shipping pending instead of failing the quote", async () => {
+    await seedByZone();
+    const { status, body } = await quote("?delivery=true&governorate=Atlantis");
+    expect(status).toBe(201);
+    expect(body).toMatchObject({ shippingPending: true, total: "200" });
+  });
+
+  it("the preview writes nothing: the cart keeps its saved fulfilment", async () => {
+    await seedByZone();
+    await quote("?delivery=true&governorate=Aswan");
+    const cart = await CartModel.findOne({ cartToken: "guest-token-1" }).lean();
+    expect(cart?.fulfilmentDraft?.address?.governorate).toBe("Cairo");
   });
 });
