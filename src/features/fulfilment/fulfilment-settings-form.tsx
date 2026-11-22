@@ -28,6 +28,8 @@ interface SettingsFormValues {
   orderMinimum: string;
   shippingFeeMode: ShippingFeeMode;
   flatShippingFee: string;
+  giftWrapEnabled: boolean;
+  giftWrapFee: string;
   allowGuestCheckout: boolean;
   taxMode: TaxMode;
   taxRate: string;
@@ -41,6 +43,13 @@ const RATE_PATTERN = /^\d+(\.\d+)?$/;
 function onlyWhenFlat(field: CustomFieldConfig<SettingsFormValues>): CustomFieldConfig<SettingsFormValues> {
   return { ...field, render: (args) => (args.form.watch("shippingFeeMode") === "FLAT" ? field.render(args) : null) };
 }
+
+function onlyWhenGiftWrap(field: CustomFieldConfig<SettingsFormValues>): CustomFieldConfig<SettingsFormValues> {
+  return { ...field, render: (args) => (args.form.watch("giftWrapEnabled") ? field.render(args) : null) };
+}
+
+/** A sensible starting price the first time gift wrapping is switched on (the owner can change it). */
+const DEFAULT_GIFT_WRAP_FEE = "50";
 
 const SECTIONS: FormSection<SettingsFormValues>[] = [
   {
@@ -112,6 +121,15 @@ const SECTIONS: FormSection<SettingsFormValues>[] = [
     ],
   },
   {
+    title: "Gift box & wrapping",
+    layout: "grid",
+    columns: 2,
+    fields: [
+      { type: FieldType.SWITCH, name: "giftWrapEnabled", label: "Offer gift box & wrapping", description: "Customers see a checkbox in the cart and at checkout. Charged once per order; promo codes and free shipping never reduce it.", colSpan: 2 },
+      onlyWhenGiftWrap(moneyField<SettingsFormValues>({ name: "giftWrapFee", label: "Gift wrapping price", description: "Added to the order when the customer ticks the box. Orders keep the price they paid." })),
+    ],
+  },
+  {
     title: "Checkout and returns",
     layout: "grid",
     columns: 2,
@@ -134,6 +152,8 @@ function toValues(settings: FulfilmentSettings): SettingsFormValues {
     orderMinimum: settings.orderMinimum ?? "",
     shippingFeeMode: settings.shippingFeeMode,
     flatShippingFee: settings.flatShippingFee ?? "",
+    giftWrapEnabled: settings.giftWrapEnabled ?? false,
+    giftWrapFee: settings.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE,
     allowGuestCheckout: settings.allowGuestCheckout,
     taxMode: settings.tax.mode,
     taxRate: String(settings.tax.rate),
@@ -160,6 +180,9 @@ function toBody(values: SettingsFormValues): FulfilmentSettingsInput {
     orderMinimum: blankToNull(values.orderMinimum),
     shippingFeeMode: values.shippingFeeMode,
     flatShippingFee: blankToNull(values.flatShippingFee),
+    giftWrapEnabled: values.giftWrapEnabled,
+    // Kept even while switched off, so switching it back on restores the price; cleared only when blanked.
+    giftWrapFee: blankToNull(values.giftWrapFee),
     allowGuestCheckout: values.allowGuestCheckout,
     tax: { mode: values.taxMode, rate: Number(values.taxRate) },
     customerCancelWindowMinutes: Number(values.customerCancelWindowMinutes),

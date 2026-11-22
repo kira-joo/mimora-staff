@@ -63,12 +63,23 @@ export interface QuoteFulfilmentView {
  * chosen, reports per-line availability instead of failing the whole quote,
  * and an empty (or absent) cart quotes as empty lines at zero.
  */
+/** Gift box & wrapping for this order: whether it is offered, whether the customer ticked it, and its fee. */
+export interface QuoteGiftWrapView {
+  available: boolean;
+  selected: boolean;
+  /** What the option costs (shown beside the checkbox); null when not offered. */
+  fee: Money | null;
+}
+
 export interface QuoteView {
   lines: QuoteLineView[];
   subtotal: Money;
   discount: Money;
   /** `null` until a fulfilment draft exists — shipping is then pending and `total` excludes it. */
   shippingFee: Money | null;
+  /** Charged on this order — zero unless gift wrap is offered and ticked. Already included in `total`. */
+  giftWrapFee: Money;
+  giftWrap: QuoteGiftWrapView;
   tax: Money;
   total: Money;
   promotion?: QuotePromotionView;

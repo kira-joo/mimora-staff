@@ -1,3 +1,4 @@
+import type { GiftWrapSettings } from "../gift-wrap/resolve-gift-wrap";
 import type { LocalizedString, Money } from "@kira-joo/toolkit-common";
 import type mongoose from "mongoose";
 import type { FulfilmentMode } from "../order-state/order-state.types";
@@ -23,6 +24,8 @@ export interface PlaceOrderFulfilmentInput {
 
 export interface PlaceOrderInput {
   cartId: mongoose.Types.ObjectId;
+  /** The live gift box & wrapping settings; the cart holds the customer choice. Absent means not offered. */
+  giftWrap?: GiftWrapSettings;
   customerId?: mongoose.Types.ObjectId;
   guestContact?: { name: string; phone: string; email?: string };
   /**

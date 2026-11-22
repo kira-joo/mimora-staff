@@ -83,6 +83,14 @@ export class UpdateFulfilmentSettingsDto {
 
   @IsOptional()
   @IsBoolean()
+  giftWrapEnabled?: boolean;
+
+  @IsOptional()
+  @Matches(MONEY_STRING_PATTERN, { message: "giftWrapFee must be a non-negative decimal amount, e.g. \"50.00\"." })
+  giftWrapFee?: string;
+
+  @IsOptional()
+  @IsBoolean()
   allowGuestCheckout?: boolean;
 
   @IsOptional()

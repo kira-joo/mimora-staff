@@ -89,6 +89,10 @@ export class CartSchema {
   @MongoField({ type: String, required: false })
   appliedPromotionCode?: string;
 
+  /** The customer ticked gift box & wrapping (once per order). Priced only by `resolveGiftWrap`, never here. */
+  @MongoField({ type: Boolean, required: false })
+  giftWrap?: boolean;
+
   @MongoField({ type: Date, required: false, expires: 0 })
   expiresAt?: Date;
 }

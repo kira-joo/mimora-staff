@@ -105,6 +105,12 @@ function OrderRecord({ order, onChanged }: { order: OrderDetail; onChanged: () =
               ) : null}
               <dt>Shipping</dt>
               <dd className="st-figure text-end text-[var(--st-ink)]">{format.money(order.fulfilment.fee)}</dd>
+              {order.giftWrap ? (
+                <>
+                  <dt className="font-semibold text-[var(--st-ink)]">Gift box &amp; wrapping</dt>
+                  <dd className="st-figure text-end font-semibold text-[var(--st-ink)]">{format.money(order.giftWrap.fee)}</dd>
+                </>
+              ) : null}
               <dt>Tax</dt>
               <dd className="st-figure text-end text-[var(--st-ink)]">{format.money(order.tax)}</dd>
               <dt className="border-t border-[var(--st-line)] pt-1.5 font-semibold text-[var(--st-ink)]">Total</dt>

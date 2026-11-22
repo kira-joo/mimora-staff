@@ -72,6 +72,7 @@ export async function getOrderDetail(input: GetOrderDetailInput): Promise<OrderD
     subtotal: order.subtotal,
     discount: order.discount,
     tax: order.tax,
+    ...(order.giftWrap ? { giftWrap: { fee: order.giftWrap.fee } } : {}),
     total: order.total,
     fulfilment: {
       mode: order.fulfilment.mode,

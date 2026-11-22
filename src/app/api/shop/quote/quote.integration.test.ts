@@ -15,6 +15,7 @@ process.env.CUSTOMER_JWT_SECRET ??= "test-customer-secret-at-least-32-characters
 process.env.STAFF_JWT_SECRET ??= "test-staff-secret-at-least-32-characters-long";
 
 const { POST } = (await import("./route")) as unknown as { POST: ShopRouteHandler };
+const { PUT: setGiftWrap } = (await import("../cart/gift-wrap/route")) as unknown as { PUT: ShopRouteHandler };
 
 const IMAGE = { provider: "cloudinary", publicId: "p1", secureUrl: "https://x/p1.jpg", format: "jpg", width: 10, height: 10, bytes: 1 } as unknown as ImageAsset;
 
@@ -55,7 +56,7 @@ describe("POST /api/shop/quote — contract", () => {
     const { status, body } = await callShopRoute(POST, "/api/shop/quote", { method: "POST", headers: { "x-cart-token": "guest-token-1" } });
 
     expect(status).toBe(201);
-    expect(Object.keys(body).sort()).toEqual(["discount", "fulfilment", "hasUnavailableLines", "lines", "shippingFee", "shippingPending", "subtotal", "tax", "total"]);
+    expect(Object.keys(body).sort()).toEqual(["discount", "fulfilment", "giftWrap", "giftWrapFee", "hasUnavailableLines", "lines", "shippingFee", "shippingPending", "subtotal", "tax", "total"]);
     expect(body).toMatchObject({ subtotal: "200", total: "200", shippingFee: null, fulfilment: null, shippingPending: true, hasUnavailableLines: true });
 
     const [available, unavailable] = body.lines;
@@ -84,5 +85,41 @@ describe("POST /api/shop/quote — contract", () => {
     const { status, body } = await callShopRoute(POST, "/api/shop/quote", { method: "POST" });
     expect(status).toBe(201);
     expect(body.lines).toEqual([]);
+  });
+});
+
+describe("gift box & wrapping — PUT /api/shop/cart/gift-wrap, then the quote", () => {
+  const quote = () => callShopRoute(POST, "/api/shop/quote", { method: "POST", headers: { "x-cart-token": "guest-token-1" } });
+  const tick = (giftWrap: unknown) => callShopRoute(setGiftWrap, "/api/shop/cart/gift-wrap", { method: "PUT", headers: { "x-cart-token": "guest-token-1" }, body: { giftWrap } });
+
+  it("offers it with its fee, adds it to the total once ticked, and removes it once unticked", async () => {
+    await seedGuestCart();
+    await FulfilmentSettingsModel.updateOne({}, { $set: { giftWrapEnabled: true, giftWrapFee: toMoney(50) } });
+
+    const offered = await quote();
+    expect(offered.body.giftWrap).toEqual({ available: true, selected: false, fee: "50" });
+    expect(offered.body.total).toBe("200"); // the 2 available tees; the out-of-stock line never counts
+
+    const ticked = await tick(true);
+    expect(ticked.status).toBe(200);
+    expect(ticked.body.giftWrap).toBe(true);
+    const withWrap = await quote();
+    expect(withWrap.body).toMatchObject({ giftWrap: { available: true, selected: true, fee: "50" }, giftWrapFee: "50", total: "250" });
+
+    await tick(false);
+    expect((await quote()).body).toMatchObject({ giftWrap: { selected: false }, giftWrapFee: "0", total: "200" });
+  });
+
+  it("is not offered while switched off — and a stale tick charges nothing", async () => {
+    await seedGuestCart();
+    await tick(true);
+    const { body } = await quote();
+    expect(body.giftWrap).toEqual({ available: false, selected: false, fee: null });
+    expect(body).toMatchObject({ giftWrapFee: "0", total: "200" });
+  });
+
+  it("refuses a value that is not true or false (400)", async () => {
+    await seedGuestCart();
+    expect((await tick("yes")).status).toBe(400);
   });
 });

@@ -137,6 +137,13 @@ export function PackingSlipPage({ orderId }: { orderId: string }) {
         </tfoot>
       </table>
 
+      {slip.giftWrap ? (
+        <section style={{ marginTop: "16pt", border: "2px solid var(--st-ink)", padding: "8pt" }}>
+          <h2 style={HEADING}>Gift box &amp; wrapping</h2>
+          <p style={{ margin: 0, fontWeight: 600 }}>The customer paid for gift wrapping — pack this order in a gift box and wrap it.</p>
+        </section>
+      ) : null}
+
       {slip.notes ? (
         <section style={{ marginTop: "16pt", border: "1.5px solid var(--st-ink)", padding: "8pt" }}>
           <h2 style={HEADING}>Customer note</h2>

@@ -21,7 +21,7 @@ export const GET = createGetRoute({
  * (a FLAT store then charges nothing — `resolveShipping`'s `?? ZERO`), no
  * daily cutoff, no shipping days (delivery promises count calendar days again).
  */
-const CLEARABLE_FULFILMENT_SETTINGS = ["orderMinimum", "flatShippingFee", "cutoffTime", "shippingDays"] as const;
+const CLEARABLE_FULFILMENT_SETTINGS = ["orderMinimum", "flatShippingFee", "giftWrapFee", "cutoffTime", "shippingDays"] as const;
 
 export const PUT = createPutRoute({
   auth: { permissions: [AppPermission.FULFILMENT_SETTINGS.UPDATE] },
@@ -38,6 +38,7 @@ export const PUT = createPutRoute({
         ...body,
         orderMinimum: mapPresent(body.orderMinimum, toMoney),
         flatShippingFee: mapPresent(body.flatShippingFee, toMoney),
+        giftWrapFee: mapPresent(body.giftWrapFee, toMoney),
       },
       CLEARABLE_FULFILMENT_SETTINGS
     );

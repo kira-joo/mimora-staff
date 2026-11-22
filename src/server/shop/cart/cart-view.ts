@@ -21,6 +21,8 @@ export interface CartView {
   lines: CartLineView[];
   fulfilmentDraft?: CartFulfilmentDraft;
   appliedPromotionCode?: string;
+  /** Whether the customer ticked gift box & wrapping. Its price is in the quote, never here. */
+  giftWrap: boolean;
   /** Present when this response corresponds to a guest cart — the caller must persist it and send it as `x-cart-token` on every subsequent `/api/shop/**` request. */
   cartToken?: string;
 }
@@ -32,13 +34,14 @@ export interface CartView {
  * documents separately — they are no longer read from the same query.
  */
 export function toCartView(
-  cart: Pick<CartSchema, "fulfilmentDraft" | "appliedPromotionCode" | "cartToken">,
+  cart: Pick<CartSchema, "fulfilmentDraft" | "appliedPromotionCode" | "cartToken" | "giftWrap">,
   lines: Pick<CartLineSchema, "_id" | "variantId" | "quantity" | "note">[]
 ): CartView {
   return {
     lines: lines.map((line) => ({ lineId: line._id.toString(), variantId: line.variantId, quantity: line.quantity, note: line.note })),
     fulfilmentDraft: cart.fulfilmentDraft,
     appliedPromotionCode: cart.appliedPromotionCode,
+    giftWrap: cart.giftWrap === true,
     cartToken: cart.cartToken,
   };
 }

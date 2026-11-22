@@ -507,3 +507,42 @@ describe("concurrency: oversell under contention", () => {
     expect(await CartModel.findById(loserCartId).lean()).not.toBeNull();
   });
 });
+
+describe("gift box & wrapping", () => {
+  const ON = { giftWrapEnabled: true, giftWrapFee: toMoney("50") };
+  const typeOf = async (orderId: mongoose.Types.ObjectId, path: string) =>
+    (await mongoose.connection.collection("orders").aggregate([{ $match: { _id: orderId } }, { $project: { t: { $type: "$" + path } } }]).toArray())[0]?.t;
+
+  it("charges the fee once when ticked, and snapshots it on the order as a BSON Double", async () => {
+    const { cart } = await seed({ price: "100.00" });
+    await CartModel.updateOne({ _id: cart._id }, { $set: { giftWrap: true } });
+    const result = await placeOrder(baseInput(cart._id, { giftWrap: ON }));
+    expect(result.total.toFixed(2)).toBe("270.00"); // 200.00 + 20.00 shipping + 50.00 gift wrap
+    const order = sanitizeLeanResult(await OrderModel.findById(result.orderId).lean());
+    expect(order?.giftWrap?.fee.toFixed(2)).toBe("50.00");
+    expect(await typeOf(result.orderId, "giftWrap.fee")).toBe("double");
+  });
+
+  it("charges nothing, and stores no gift wrap, when not ticked", async () => {
+    const { cart } = await seed({ price: "100.00" });
+    const result = await placeOrder(baseInput(cart._id, { giftWrap: ON }));
+    expect(result.total.toFixed(2)).toBe("220.00");
+    expect(await typeOf(result.orderId, "giftWrap")).toBe("missing");
+  });
+
+  it("charges nothing when the store has switched it off, even if the cart still has it ticked", async () => {
+    const { cart } = await seed({ price: "100.00" });
+    await CartModel.updateOne({ _id: cart._id }, { $set: { giftWrap: true } });
+    const result = await placeOrder(baseInput(cart._id, { giftWrap: { giftWrapEnabled: false, giftWrapFee: toMoney("50") } }));
+    expect(result.total.toFixed(2)).toBe("220.00");
+    expect(await typeOf(result.orderId, "giftWrap")).toBe("missing");
+  });
+
+  it("carries its own fee — nothing on the order points back at the settings", async () => {
+    const { cart } = await seed({ price: "100.00" });
+    await CartModel.updateOne({ _id: cart._id }, { $set: { giftWrap: true } });
+    const result = await placeOrder(baseInput(cart._id, { giftWrap: ON }));
+    const stored = await mongoose.connection.collection("orders").findOne({ _id: result.orderId });
+    expect(stored?.giftWrap).toEqual({ fee: 50 });
+  });
+});

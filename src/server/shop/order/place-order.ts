@@ -174,6 +174,7 @@ export async function placeOrderService(input: PlaceOrderServiceInput): Promise<
     paymentDestination: paymentMethodConfig.destination,
     paymentInstructions: paymentMethodConfig.instructions,
     now,
+    giftWrap: { giftWrapEnabled: fulfilmentSettings.giftWrapEnabled, giftWrapFee: fulfilmentSettings.giftWrapFee },
     tax: {
       mode: fulfilmentSettings.tax.mode,
       rate: fulfilmentSettings.tax.rate,

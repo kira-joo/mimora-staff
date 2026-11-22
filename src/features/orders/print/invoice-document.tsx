@@ -186,6 +186,14 @@ export function InvoiceBody({ invoice }: { invoice: InvoiceDocument }) {
         <dd className="num" style={{ margin: 0 }}>
           {Number(invoice.shipping) > 0 ? format.money(invoice.shipping) : "Free"}
         </dd>
+        {invoice.giftWrap ? (
+          <>
+            <dt>Gift box &amp; wrapping</dt>
+            <dd className="num" style={{ margin: 0 }}>
+              {format.money(invoice.giftWrap)}
+            </dd>
+          </>
+        ) : null}
         {/* Tax by the mode in force when the order was placed: added on top, or already inside the total. */}
         {invoice.tax.mode === "ADDED" ? (
           <>

@@ -5,7 +5,7 @@ import { toCartView, type CartView } from "./cart/cart-view";
 
 export type { CartView };
 
-const EMPTY_CART: CartView = { lines: [] };
+const EMPTY_CART: CartView = { lines: [], giftWrap: false };
 
 /**
  * Reads the current cart for whoever `resolveShopActor` resolved — a

@@ -181,7 +181,7 @@ describe("the read normalisation itself", () => {
   it("every model that stores money is covered, and nothing else is marked as money", () => {
     const covered = Object.fromEntries(ALL_MODELS.map((model) => [model.modelName, moneyPaths(model.schema as unknown as mongoose.Schema)]).filter(([, paths]) => paths.length > 0));
     expect(Object.keys(covered).sort()).toEqual(["DeliveryZone", "FulfilmentSettings", "Order", "OrderLine", "Product", "Promotion", "Return", "Variant"]);
-    expect(Object.values(covered).flat()).toHaveLength(25);
+    expect(Object.values(covered).flat()).toHaveLength(27);
     for (const model of ALL_MODELS) {
       model.schema.eachPath((_path, type) => {
         if ((type.options as Record<string, unknown>)?.[MONEY_PATH_MARKER]) expect(type.instance).toBe("Double");

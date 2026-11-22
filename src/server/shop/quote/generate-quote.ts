@@ -11,6 +11,7 @@ import {
   pickupLocationRepository,
 } from "../../core/repositories";
 import { calculatePricing } from "../../engines/pricing/calculate-pricing";
+import { resolveGiftWrap } from "../../engines/gift-wrap/resolve-gift-wrap";
 import type { AppliedDiscount } from "../../engines/pricing/pricing.types";
 import { resolvePurchasability } from "../../engines/purchasability/resolve-purchasability";
 import { meetsOrderMinimum, resolveShipping } from "../../engines/shipping/resolve-shipping";
@@ -200,11 +201,15 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
       }
     : undefined;
 
+  // Gift box & wrapping: the same rule placement applies (resolveGiftWrap), so the quote is what is charged.
+  const giftWrap = resolveGiftWrap(fulfilmentSettings, availableLines.length > 0 ? cart.giftWrap : false);
+
   // Calculate final pricing
   const pricing = calculatePricing({
     lines: pricingLines,
     discount,
     shippingFee,
+    giftWrapFee: giftWrap.charge,
     tax: { mode: fulfilmentSettings.tax.mode, rate: fulfilmentSettings.tax.rate },
   });
 
@@ -246,6 +251,8 @@ export async function generateQuote(input: GenerateQuoteInput): Promise<QuoteVie
     subtotal: pricing.subtotal,
     discount: pricing.discount,
     shippingFee: shippingResult ? pricing.shippingFee : null,
+    giftWrapFee: pricing.giftWrapFee,
+    giftWrap: { available: giftWrap.available, selected: giftWrap.selected, fee: giftWrap.fee },
     tax: pricing.tax,
     total: pricing.total,
     promotion: promotionView,
@@ -270,6 +277,8 @@ function emptyQuote(): QuoteView {
     subtotal: ZERO,
     discount: ZERO,
     shippingFee: null,
+    giftWrapFee: ZERO,
+    giftWrap: { available: false, selected: false, fee: null },
     tax: ZERO,
     total: ZERO,
     fulfilment: null,

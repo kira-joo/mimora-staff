@@ -46,6 +46,8 @@ export interface InvoiceView {
   discount: Money;
   promotionCode?: string;
   shipping: Money;
+  /** Gift box & wrapping, when the order included it (its snapshotted fee). */
+  giftWrap?: Money;
   /** `ADDED`: `amount` is on top of the subtotal. `INCLUDED`: `amount` is already inside the total. */
   tax: { mode: "INCLUDED" | "ADDED"; rate: number; amount: Money };
   total: Money;
@@ -82,6 +84,7 @@ export interface InvoiceSource {
     | "payment"
     | "timeline"
     | "refundedTotal"
+    | "giftWrap"
   >;
   lines: ReadonlyArray<Pick<OrderLineSchema, "lineNumber" | "sku" | "productName" | "variantDescription" | "quantity" | "unitPrice" | "lineTotal" | "lineDiscount" | "promotionCode">>;
   returnRefunds?: readonly InvoiceReturnRefund[];
@@ -143,6 +146,7 @@ export function buildInvoiceView(source: InvoiceSource): InvoiceView | undefined
     discount: order.discount ?? ZERO,
     ...(lineWithCode?.promotionCode ? { promotionCode: lineWithCode.promotionCode } : {}),
     shipping: order.fulfilment.fee ?? ZERO,
+    ...(order.giftWrap ? { giftWrap: order.giftWrap.fee } : {}),
     tax: { mode: order.invoiceSnapshot.tax.mode, rate: order.invoiceSnapshot.tax.rate, amount: order.tax ?? ZERO },
     total: order.total,
     payment: { method: order.payment.method, status: order.payment.status },

@@ -82,6 +82,17 @@ export class FulfilmentSettingsSchema {
   @MongoField(moneyDoubleField())
   flatShippingFee?: Money;
 
+  /**
+   * Gift box & wrapping — an optional add-on the customer ticks in the cart or at checkout: one fee per order
+   * (`giftWrapFee`), charged like shipping and never reduced by a discount or waived by free shipping. Offered only
+   * when enabled AND a fee is set (`resolveGiftWrap`). The fee an order paid is snapshotted on `Order.giftWrap`.
+   */
+  @MongoField({ type: Boolean, default: false })
+  giftWrapEnabled!: boolean;
+
+  @MongoField(moneyDoubleField())
+  giftWrapFee?: Money;
+
   @MongoField({ type: Boolean, default: true })
   allowGuestCheckout!: boolean;
 

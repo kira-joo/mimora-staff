@@ -28,10 +28,12 @@ export interface PackingSlipView {
   totalUnits: number;
   /** The customer's checkout note — a packer needs "gift, no price tag" and "leave with the neighbour". */
   notes?: string;
+  /** The customer chose gift box & wrapping — the packer must wrap this order. */
+  giftWrap?: boolean;
 }
 
 export interface PackingSlipSource {
-  order: Pick<OrderSchema, "orderNumber" | "placedAt" | "status" | "guestName" | "guestPhone" | "fulfilment" | "payment" | "notes">;
+  order: Pick<OrderSchema, "orderNumber" | "placedAt" | "status" | "guestName" | "guestPhone" | "fulfilment" | "payment" | "notes" | "giftWrap">;
   lines: ReadonlyArray<Pick<OrderLineSchema, "lineNumber" | "sku" | "productName" | "variantDescription" | "quantity">>;
 }
 
@@ -53,5 +55,6 @@ export function buildPackingSlip({ order, lines }: PackingSlipSource): PackingSl
     lines: sorted.map((line) => ({ lineNumber: line.lineNumber, sku: line.sku, productName: line.productName, variantDescription: line.variantDescription, quantity: line.quantity })),
     totalUnits: sorted.reduce((sum, line) => sum + line.quantity, 0),
     ...(order.notes ? { notes: order.notes } : {}),
+    ...(order.giftWrap ? { giftWrap: true } : {}),
   };
 }

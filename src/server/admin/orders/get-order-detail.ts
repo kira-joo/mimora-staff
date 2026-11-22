@@ -84,6 +84,7 @@ export async function getOrderDetailAdmin(orderId: string, options: OrderDetailO
     subtotal: order.subtotal,
     discount: order.discount,
     tax: order.tax,
+    ...(order.giftWrap ? { giftWrap: { fee: order.giftWrap.fee } } : {}),
     total: order.total,
     /** Every refund recorded so far — the payment refund plus refunded returns (`reserveOrderRefund`). */
     refundedTotal: order.refundedTotal ?? ZERO,

@@ -334,3 +334,35 @@ describe("the full breakdown", () => {
     expect(result.total.isNegative()).toBe(false);
   });
 });
+
+describe("gift wrap (once per order)", () => {
+  it("adds the fee to the total and reports it", () => {
+    const result = calculatePricing(input({ lines: [{ unitBasePrice: m("200.00"), quantity: 2 }], shippingFee: m("60.00"), giftWrapFee: m("50.00") }));
+    expectMoney(result.giftWrapFee, "50.00");
+    expectMoney(result.total, "510.00");
+  });
+
+  it("is zero, and changes nothing, when not chosen", () => {
+    const result = calculatePricing(input({ shippingFee: m("60.00") }));
+    expectMoney(result.giftWrapFee, "0.00");
+    expectMoney(result.total, "70.00");
+  });
+
+  it("is never reduced by a discount, even one larger than the basket", () => {
+    const result = calculatePricing(input({ lines: [{ unitBasePrice: m("100.00"), quantity: 1 }], discount: { subtotalDiscount: m("500.00"), waivesShippingFee: false }, giftWrapFee: m("50.00") }));
+    expectMoney(result.discount, "100.00");
+    expectMoney(result.total, "50.00");
+  });
+
+  it("is not waived by free shipping", () => {
+    const result = calculatePricing(input({ lines: [{ unitBasePrice: m("100.00"), quantity: 1 }], shippingFee: m("60.00"), discount: { subtotalDiscount: ZERO, waivesShippingFee: true }, giftWrapFee: m("50.00") }));
+    expectMoney(result.shippingFee, "0.00");
+    expectMoney(result.total, "150.00");
+  });
+
+  it("is taxed like shipping when tax is added", () => {
+    const result = calculatePricing(input({ lines: [{ unitBasePrice: m("100.00"), quantity: 1 }], giftWrapFee: m("50.00"), tax: { mode: "ADDED", rate: 14 } }));
+    expectMoney(result.tax, "21.00");
+    expectMoney(result.total, "171.00");
+  });
+});

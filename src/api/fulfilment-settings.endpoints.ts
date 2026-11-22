@@ -21,6 +21,9 @@ export interface FulfilmentSettings {
   orderMinimum?: string;
   shippingFeeMode: ShippingFeeMode;
   flatShippingFee?: string;
+  /** Gift box & wrapping, once per order: offered to customers only when enabled and a fee is set. */
+  giftWrapEnabled: boolean;
+  giftWrapFee?: string;
   allowGuestCheckout: boolean;
   tax: { mode: TaxMode; rate: number };
   customerCancelWindowMinutes: number;
@@ -32,11 +35,12 @@ export interface FulfilmentSettings {
 }
 
 /** On an update, `null` clears an optional setting: no cutoff, no order minimum, no flat fee, no shipping days. */
-export type FulfilmentSettingsInput = Partial<Omit<FulfilmentSettings, "cutoffTime" | "orderMinimum" | "flatShippingFee" | "shippingDays">> & {
+export type FulfilmentSettingsInput = Partial<Omit<FulfilmentSettings, "cutoffTime" | "orderMinimum" | "flatShippingFee" | "giftWrapFee" | "shippingDays">> & {
   shippingDays?: number[] | null;
   cutoffTime?: string | null;
   orderMinimum?: string | null;
   flatShippingFee?: string | null;
+  giftWrapFee?: string | null;
 };
 
 export interface HourRange {

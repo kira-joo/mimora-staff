@@ -27,6 +27,8 @@ export interface PricingInput {
   discount?: AppliedDiscount;
   /** Absent for pickup, where there is nothing to charge. */
   shippingFee?: Money;
+  /** Gift box & wrapping, once per order (`resolveGiftWrap`). Never discounted, never waived by free shipping. */
+  giftWrapFee?: Money;
   tax: { mode: "INCLUDED" | "ADDED"; rate: number };
 }
 
@@ -48,6 +50,7 @@ export interface PricingResult {
   subtotal: Money;
   discount: Money;
   shippingFee: Money;
+  giftWrapFee: Money;
   tax: Money;
   total: Money;
 }

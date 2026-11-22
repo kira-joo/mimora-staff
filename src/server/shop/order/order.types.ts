@@ -68,6 +68,8 @@ export interface OrderDetailView {
   subtotal: Money;
   discount: Money;
   tax: Money;
+  /** Gift box & wrapping, when chosen: its snapshotted fee (already in `total`). */
+  giftWrap?: { fee: Money };
   total: Money;
   fulfilment: {
     mode: "DELIVERY" | "PICKUP";

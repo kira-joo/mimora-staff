@@ -103,6 +103,8 @@ export interface OrderDetail {
   subtotal: string;
   discount: string;
   tax: string;
+  /** Gift box & wrapping, when the customer chose it: its fee (already in `total`). */
+  giftWrap?: { fee: string };
   total: string;
   /** Every refund recorded on the order so far: the payment refund plus refunded returns. */
   refundedTotal: string;
@@ -224,6 +226,8 @@ export interface InvoiceDocument {
   discount: string;
   promotionCode?: string;
   shipping: string;
+  /** Gift box & wrapping, when the order included it. */
+  giftWrap?: string;
   tax: { mode: "INCLUDED" | "ADDED"; rate: number; amount: string };
   total: string;
   payment: { method: string; status: PaymentStatus };
@@ -250,6 +254,7 @@ export interface PackingSlipDocument {
   lines: Array<{ lineNumber: number; sku: string; productName: string; variantDescription: string; quantity: number }>;
   totalUnits: number;
   notes?: string;
+  giftWrap?: boolean;
 }
 
 export const getPackingSlipEndpoint: Endpoint<{ params: { id: string }; returnType: PackingSlipDocument }> = {

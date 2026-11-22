@@ -25,13 +25,13 @@ afterAll(async () => {
 describe("getCart", () => {
   it("returns an empty cart for a guest with no cart token — no document is created on read", async () => {
     const view = await getCart({ kind: "guest", cartToken: null });
-    expect(view).toEqual({ lines: [] });
+    expect(view).toEqual({ lines: [], giftWrap: false });
     expect(await CartModel.countDocuments({})).toBe(0);
   });
 
   it("returns an empty cart for a guest whose cart token matches nothing yet", async () => {
     const view = await getCart({ kind: "guest", cartToken: "unknown-token" });
-    expect(view).toEqual({ lines: [] });
+    expect(view).toEqual({ lines: [], giftWrap: false });
   });
 
   it("returns the guest's real cart when the token matches", async () => {
@@ -52,7 +52,7 @@ describe("getCart", () => {
 
   it("returns an empty cart for a customer who has never added a line", async () => {
     const view = await getCart({ kind: "customer", customer: { _id: new mongoose.Types.ObjectId().toString(), name: "x", phone: "x" } });
-    expect(view).toEqual({ lines: [] });
+    expect(view).toEqual({ lines: [], giftWrap: false });
   });
 
   it("returns the customer's own cart by customerId", async () => {

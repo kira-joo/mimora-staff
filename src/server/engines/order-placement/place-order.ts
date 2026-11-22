@@ -15,6 +15,7 @@ import {
   variantRepository,
 } from "../../core/repositories";
 import { calculatePricing } from "../pricing/calculate-pricing";
+import { resolveGiftWrap } from "../gift-wrap/resolve-gift-wrap";
 import type { AppliedDiscount } from "../pricing/pricing.types";
 import { initialPaymentStatus } from "../order-state/order-state-machine";
 import { resolveOrderPromotion } from "../../shop/order/resolve-order-promotion";
@@ -192,10 +193,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrderRes
       }
     }
 
+    // Gift box & wrapping: the same rule the quote applied (resolveGiftWrap), from the cart choice and live settings.
+    const giftWrap = resolveGiftWrap(input.giftWrap ?? {}, cart.giftWrap);
+
     const pricing = calculatePricing({
       lines: pricingLines,
       discount,
       shippingFee,
+      giftWrapFee: giftWrap.charge,
       tax: input.tax,
     });
 
@@ -294,6 +299,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrderRes
       subtotal: pricing.subtotal,
       discount: pricing.discount,
       tax: pricing.tax,
+      ...(giftWrap.charge ? { giftWrap: { fee: pricing.giftWrapFee } } : {}),
       total: pricing.total,
       payment: { method: input.paymentMethod, status: paymentStatus, destinationSnapshot: input.paymentDestination, instructionsSnapshot: input.paymentInstructions },
       status: "PLACED",

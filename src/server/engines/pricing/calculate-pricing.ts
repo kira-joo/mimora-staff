@@ -62,7 +62,10 @@ export function calculatePricing(input: PricingInput): PricingResult {
 
   const shippingFee = resolveShippingFee(input.shippingFee, discount?.waivesShippingFee ?? false);
 
-  const taxableBase = discountedSubtotal.plus(shippingFee);
+  // Gift wrap is a service charged like shipping: after the discount (a discount never reduces it), and taxed with it.
+  const giftWrapFee = input.giftWrapFee ?? ZERO;
+
+  const taxableBase = discountedSubtotal.plus(shippingFee).plus(giftWrapFee);
   const taxAmount = calculateTax(tax, taxableBase);
 
   const total = tax.mode === "ADDED" ? taxableBase.plus(taxAmount) : taxableBase;
@@ -72,6 +75,7 @@ export function calculatePricing(input: PricingInput): PricingResult {
     subtotal,
     discount: appliedDiscount,
     shippingFee,
+    giftWrapFee,
     tax: taxAmount,
     total,
   };

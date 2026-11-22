@@ -241,6 +241,14 @@ export class OrderSchema {
   @MongoField(moneyDoubleField({ defaultZero: true }))
   tax!: Money;
 
+  /**
+   * Gift box & wrapping, when the customer chose it: the fee as charged, SNAPSHOTTED (a later price change in
+   * Settings never alters this order). Absent when not chosen. Already included in `total`; staff see it on the order
+   * and the packing slip, the customer on their order and invoice.
+   */
+  @MongoField({ type: new mongoose.Schema({ fee: moneyDoubleField({ required: true }) }, { _id: false }), required: false })
+  giftWrap?: { fee: Money };
+
   @MongoField(moneyDoubleField({ required: true }))
   total!: Money;
 
