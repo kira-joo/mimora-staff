@@ -90,9 +90,13 @@ export async function register(): Promise<void> {
 
   console.log(`[permissions] synced: ${result.created.length} created, ${result.updated.length} updated, ${result.skipped.length} already existed`);
 
-  const { seedDefaultRoles } = await import("./server/admin/staff/seed-default-roles");
+  const { seedDefaultRoles, migrateLegacyStaffManage } = await import("./server/admin/staff/seed-default-roles");
   const roleResult = await seedDefaultRoles();
 
   console.log(`[roles] seeded: ${roleResult.created.length} created, ${roleResult.skipped.length} already existed`);
   for (const [role, keys] of Object.entries(roleResult.permissionsAdded)) console.log(`[roles] ${role}: added missing default permissions (${keys.join(", ")})`);
+
+  // Staff routes are guarded by granular StaffUser.* permissions; a role that held the retired StaffUser.manage keeps its access.
+  const legacy = await migrateLegacyStaffManage();
+  if (legacy.rolesUpdated > 0) console.log(`[roles] migrated ${legacy.rolesUpdated} role(s) off the retired StaffUser.manage onto StaffUser.read/create/update`);
 }

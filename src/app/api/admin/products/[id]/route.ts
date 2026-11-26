@@ -40,7 +40,6 @@ export const PUT = createPutRoute({
       attributes: body.attributes,
       seoTitle: body.seoTitle,
       seoDescription: body.seoDescription,
-      order: body.order,
       publishAt: body.publishAt ? new Date(body.publishAt) : undefined,
     });
 

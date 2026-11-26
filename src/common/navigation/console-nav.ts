@@ -100,7 +100,7 @@ export const CONSOLE_NAV: SideNavSectionConfig[] = [
         label: "Staff",
         href: AppRoute.TEAM,
         icon: Users,
-        permission: CustomPermission.STAFF_MANAGE,
+        permission: AppPermission.STAFF_USER.READ,
         // Roles live under /team but are their own item.
         isActive: (pathname) => (pathname === AppRoute.TEAM || pathname.startsWith(`${AppRoute.TEAM}/`)) && !pathname.startsWith(AppRoute.ROLES),
       },

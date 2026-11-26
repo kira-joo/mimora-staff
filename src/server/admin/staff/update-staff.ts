@@ -1,15 +1,18 @@
-import { ConflictError } from "@kira-joo/backend-toolkit-core";
+import { ConflictError, type AuthUser } from "@kira-joo/backend-toolkit-core";
 import mongoose from "mongoose";
 import { revokeAllForSubject } from "@kira-joo/backend-toolkit-mongoose";
 import { staffUserRepository } from "../../core/repositories";
 import { StaffRefreshTokenModel } from "../../identity/staff-refresh-token.schema";
-import { assertRolesExist } from "../../identity/assert-roles-exist";
+import { assertCanAssignRoles, assertCanManageStaff, loadActorAccess, type RequestActor } from "../roles/role-access";
+import { AppPermission } from "../../../common/authorization/authorization-registry";
 import { LAST_OWNER_MESSAGE, activeOwnerRoleIds, countActiveOwners, withOwnerGuard } from "./owner-invariant";
 import type { UpdateStaffDto } from "../dto/update-staff.dto";
 
 export interface UpdateStaffInput {
   staffId: string;
   actingStaffId: string;
+  /** The acting staff member. Their access is re-read inside the transaction, so a concurrent change to it counts. */
+  actor: RequestActor;
   body: UpdateStaffDto;
 }
 
@@ -42,15 +45,19 @@ export interface UpdateStaffInput {
  * that first writes a shared lock document (`withOwnerGuard`): concurrent
  * demotions write-conflict, and the loser re-counts after the winner commits.
  *
+ * **No privilege escalation.** The actor must cover the target's current access (`assertCanManageStaff`) and every
+ * role being assigned (`assertCanAssignRoles`) — holding `StaffUser.update` never lets anyone promote themselves or
+ * a colleague beyond their own access, nor touch an Owner unless they are one.
+ *
  * **There is no DELETE.** Staff appear as actors on order timelines and in
  * the activity log; deactivation is the removal.
  */
-export async function updateStaff({ staffId, actingStaffId, body }: UpdateStaffInput) {
+export async function updateStaff({ staffId: rawStaffId, actingStaffId, actor, body }: UpdateStaffInput) {
+  // One canonical spelling of every id, so string comparisons below cannot be dodged with an uppercase id.
+  const staffId = new mongoose.Types.ObjectId(rawStaffId).toHexString();
   if (body.active === false && staffId === actingStaffId) {
     throw new ConflictError("You cannot deactivate your own account.");
   }
-
-  if (body.roleIds !== undefined) await assertRolesExist(body.roleIds);
 
   const patch: Record<string, unknown> = {};
   if (body.name !== undefined) patch.name = body.name.trim();
@@ -60,16 +67,17 @@ export async function updateStaff({ staffId, actingStaffId, body }: UpdateStaffI
   }
 
   const invalidatesSessions = body.roleIds !== undefined || body.active !== undefined;
-  const write = () =>
-    staffUserRepository.updateAtomic({ _id: staffId }, invalidatesSessions ? { $set: patch, $inc: { tokenVersion: 1 } } : { $set: patch });
 
-  // A name edit cannot affect who is an Owner, so it neither needs nor takes the lock.
-  const updated = invalidatesSessions
-    ? await withOwnerGuard(async () => {
-        await assertNotLastOwnerLoss(staffId, body);
-        return write();
-      })
-    : await write();
+  // Every check runs in the same serialised transaction as the write (`withOwnerGuard`, which role edits and deletes
+  // take too): the actor's access, the target's access and the roles being given are all read in one consistent state,
+  // so a role widened — or deleted — a moment earlier cannot slip through on a stale read.
+  const updated = await withOwnerGuard(async () => {
+    const access = await loadActorAccess(actor, AppPermission.STAFF_USER.UPDATE);
+    await assertCanManageStaff(access, staffId);
+    if (body.roleIds !== undefined) await assertCanAssignRoles(access, body.roleIds);
+    await assertNotLastOwnerLoss(staffId, body);
+    return staffUserRepository.updateAtomic({ _id: staffId }, invalidatesSessions ? { $set: patch, $inc: { tokenVersion: 1 } } : { $set: patch });
+  });
 
   // The tokenVersion bump kills outstanding access tokens; revoking the
   // refresh families stops them being renewed, as the reference does.

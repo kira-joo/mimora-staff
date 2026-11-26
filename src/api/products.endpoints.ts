@@ -89,12 +89,22 @@ export interface ProductInput {
   publishAt?: string;
 }
 
+/** How the products list is ordered (`sort` on `GET /admin/products`). `manual` is the arranged order and the default. */
+export type ProductListSort = "manual" | "newest" | "oldest" | "price_asc" | "price_desc";
+
+export const PRODUCT_SORT_OPTIONS: Array<{ value: ProductListSort; label: string }> = [
+  { value: "manual", label: "Manual order" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
+];
+
 export interface ListProductsQuery {
   page?: number;
   limit?: number;
   search?: string;
-  sortBy?: string;
-  sortOrder?: string;
+  sort?: ProductListSort;
   categoryId?: string;
   brandId?: string;
   collectionId?: string;
@@ -127,5 +137,33 @@ export const updateProductEndpoint: Endpoint<{ params: { id: string }; body: Par
 
 export const setProductLifecycleEndpoint: Endpoint<{ params: { id: string }; body: { lifecycle: ProductLifecycle }; returnType: Product }> = {
   url: `${PRODUCTS}/:id/lifecycle`,
+  methodType: MethodType.PUT,
+};
+
+/** What the arrange screen shows of one product (`GET /admin/products/order`): a light projection, never the whole document. */
+export interface ArrangeProduct {
+  _id: string;
+  name: LocalizedText;
+  slug: string;
+  lifecycle: ProductLifecycle;
+  categoryId: string;
+  listing: { primaryImage?: ImageAsset };
+}
+
+/** At most one of the two. A category includes all its sub-categories; neither means the whole catalogue. */
+export type ProductOrderScope = {
+  categoryId?: string;
+  collectionId?: string;
+};
+
+/** Every non-archived product in the scope, in its manual order, unpaginated. */
+export const listProductOrderEndpoint: Endpoint<{ query: ProductOrderScope; returnType: ArrangeProduct[] }> = {
+  url: `${PRODUCTS}/order`,
+  methodType: MethodType.GET,
+};
+
+/** Saves the scope's complete list in its new order. A 409 means the list changed since it was loaded. */
+export const saveProductOrderEndpoint: Endpoint<{ body: ProductOrderScope & { productIds: string[] }; returnType: { updated: number } }> = {
+  url: `${PRODUCTS}/order`,
   methodType: MethodType.PUT,
 };

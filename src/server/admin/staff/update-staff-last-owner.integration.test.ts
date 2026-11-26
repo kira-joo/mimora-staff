@@ -8,6 +8,16 @@ import { RoleModel, PermissionModel } from "../../core/authorization/role.model"
 import { updateStaff } from "./update-staff";
 
 /**
+ * The acting administrator. These tests exercise other rules, so it has full access and the grant policy never
+ * intervenes; it has no password, so it never counts as a usable Owner in the last-Owner checks.
+ */
+async function actingAdmin(): Promise<{ _id: string; tokenVersion: number; roles: Array<{ name: string; grantsAll: boolean; permissions: string[] }> }> {
+  const role = await RoleModel.create({ name: `Acting-${new mongoose.Types.ObjectId()}`, grantsAll: true, permissions: [], isActive: true });
+  const admin = await StaffUserModel.create({ name: "Acting admin", email: `acting-${new mongoose.Types.ObjectId()}@example.com`, roles: [role._id] });
+  return { _id: String(admin._id), tokenVersion: admin.tokenVersion, roles: [{ name: role.name, grantsAll: true, permissions: [] }] };
+}
+
+/**
  * The last active Owner can be neither demoted nor deactivated — including by
  * themselves. An "Owner" is active AND holds an active `grantsAll` role.
  */
@@ -24,7 +34,7 @@ afterAll(async () => {
 
 const ownerRole = () => RoleModel.create({ name: `Owner-${new mongoose.Types.ObjectId()}`, grantsAll: true, permissions: [], isActive: true });
 const plainRole = () => RoleModel.create({ name: `Plain-${new mongoose.Types.ObjectId()}`, grantsAll: false, permissions: [], isActive: true });
-const staff = (name: string, roles: mongoose.Types.ObjectId[], active = true) => StaffUserModel.create({ name, email: `${name}-${new mongoose.Types.ObjectId()}@example.com`, roles, active });
+const staff = (name: string, roles: mongoose.Types.ObjectId[], active = true) => StaffUserModel.create({ name, email: `${name}-${new mongoose.Types.ObjectId()}@example.com`, roles, active, passwordHash: "test-hash" });
 const id = (document: { _id: mongoose.Types.ObjectId }) => document._id.toString();
 
 describe("updateStaff — the last active Owner", () => {
@@ -33,8 +43,8 @@ describe("updateStaff — the last active Owner", () => {
     const sole = await staff("sole", [owner._id]);
     const admin = await staff("admin", [(await plainRole())._id]);
 
-    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(admin), body: { active: false } })).rejects.toThrow(ConflictError);
-    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(admin), body: { active: false } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(admin), actor: await actingAdmin(), body: { active: false } })).rejects.toThrow(ConflictError);
+    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(admin), actor: await actingAdmin(), body: { active: false } })).rejects.toThrow(/last active Owner/);
 
     const after = await StaffUserModel.findById(sole._id).lean();
     expect(after?.active).toBe(true);
@@ -46,8 +56,8 @@ describe("updateStaff — the last active Owner", () => {
     const plain = await plainRole();
     const sole = await staff("sole", [owner._id]);
 
-    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(sole), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
-    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(sole), body: { roleIds: [] } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(sole), actor: await actingAdmin(), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(sole), actingStaffId: id(sole), actor: await actingAdmin(), body: { roleIds: [] } })).rejects.toThrow(/last active Owner/);
 
     expect((await StaffUserModel.findById(sole._id).lean())?.roles.map(String)).toEqual([id(owner)]);
   });
@@ -57,8 +67,8 @@ describe("updateStaff — the last active Owner", () => {
     const otherOwner = await ownerRole();
     const sole = await staff("sole", [owner._id]);
 
-    await updateStaff({ staffId: id(sole), actingStaffId: id(sole), body: { name: "Renamed" } });
-    await updateStaff({ staffId: id(sole), actingStaffId: id(sole), body: { roleIds: [id(otherOwner)] } });
+    await updateStaff({ staffId: id(sole), actingStaffId: id(sole), actor: await actingAdmin(), body: { name: "Renamed" } });
+    await updateStaff({ staffId: id(sole), actingStaffId: id(sole), actor: await actingAdmin(), body: { roleIds: [id(otherOwner)] } });
 
     const after = await StaffUserModel.findById(sole._id).lean();
     expect(after?.name).toBe("Renamed");
@@ -71,11 +81,11 @@ describe("updateStaff — the last active Owner", () => {
     const first = await staff("first", [owner._id]);
     const second = await staff("second", [owner._id]);
 
-    await updateStaff({ staffId: id(first), actingStaffId: id(second), body: { roleIds: [id(plain)] } });
+    await updateStaff({ staffId: id(first), actingStaffId: id(second), actor: await actingAdmin(), body: { roleIds: [id(plain)] } });
     expect((await StaffUserModel.findById(first._id).lean())?.roles.map(String)).toEqual([id(plain)]);
 
-    await expect(updateStaff({ staffId: id(second), actingStaffId: id(first), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
-    await expect(updateStaff({ staffId: id(second), actingStaffId: id(first), body: { active: false } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(second), actingStaffId: id(first), actor: await actingAdmin(), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(second), actingStaffId: id(first), actor: await actingAdmin(), body: { active: false } })).rejects.toThrow(/last active Owner/);
   });
 
   it("an inactive Owner does not count as another Owner", async () => {
@@ -84,7 +94,7 @@ describe("updateStaff — the last active Owner", () => {
     const active = await staff("active", [owner._id]);
     await staff("inactive", [owner._id], false);
 
-    await expect(updateStaff({ staffId: id(active), actingStaffId: id(active), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(active), actingStaffId: id(active), actor: await actingAdmin(), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
   });
 
   it("a holder of an INACTIVE full-access role is not an Owner, so does not count", async () => {
@@ -94,7 +104,7 @@ describe("updateStaff — the last active Owner", () => {
     const active = await staff("active", [owner._id]);
     await staff("dormant-holder", [dormant._id]);
 
-    await expect(updateStaff({ staffId: id(active), actingStaffId: id(active), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
+    await expect(updateStaff({ staffId: id(active), actingStaffId: id(active), actor: await actingAdmin(), body: { roleIds: [id(plain)] } })).rejects.toThrow(/last active Owner/);
   });
 
   it("is not triggered for staff who are not Owners", async () => {
@@ -103,7 +113,7 @@ describe("updateStaff — the last active Owner", () => {
     await staff("owner", [owner._id]);
     const clerk = await staff("clerk", [plain._id]);
 
-    await updateStaff({ staffId: id(clerk), actingStaffId: "someone-else", body: { active: false } });
+    await updateStaff({ staffId: id(clerk), actingStaffId: "someone-else", actor: await actingAdmin(), body: { active: false } });
     expect((await StaffUserModel.findById(clerk._id).lean())?.active).toBe(false);
   });
 
@@ -111,7 +121,7 @@ describe("updateStaff — the last active Owner", () => {
     const owner = await ownerRole();
     const one = await staff("one", [owner._id]);
     await staff("two", [owner._id]);
-    await expect(updateStaff({ staffId: id(one), actingStaffId: id(one), body: { active: false } })).rejects.toThrow(/cannot deactivate your own account/);
+    await expect(updateStaff({ staffId: id(one), actingStaffId: id(one), actor: await actingAdmin(), body: { active: false } })).rejects.toThrow(/cannot deactivate your own account/);
   });
 });
 
@@ -133,8 +143,8 @@ describe("updateStaff — concurrent demotion of the last two Owners", () => {
       const second = await staff("second", [owner._id]);
 
       const settled = await Promise.allSettled([
-        updateStaff({ staffId: id(first), actingStaffId: id(second), body: { roleIds: [id(plain)] } }),
-        updateStaff({ staffId: id(second), actingStaffId: id(first), body: { roleIds: [id(plain)] } }),
+        updateStaff({ staffId: id(first), actingStaffId: id(second), actor: await actingAdmin(), body: { roleIds: [id(plain)] } }),
+        updateStaff({ staffId: id(second), actingStaffId: id(first), actor: await actingAdmin(), body: { roleIds: [id(plain)] } }),
       ]);
 
       expect(settled.filter((result) => result.status === "fulfilled")).toHaveLength(1);
@@ -154,8 +164,8 @@ describe("updateStaff — concurrent demotion of the last two Owners", () => {
       const admin = await staff("admin", [(await plainRole())._id]);
 
       const settled = await Promise.allSettled([
-        updateStaff({ staffId: id(first), actingStaffId: id(admin), body: { active: false } }),
-        updateStaff({ staffId: id(second), actingStaffId: id(admin), body: { active: false } }),
+        updateStaff({ staffId: id(first), actingStaffId: id(admin), actor: await actingAdmin(), body: { active: false } }),
+        updateStaff({ staffId: id(second), actingStaffId: id(admin), actor: await actingAdmin(), body: { active: false } }),
       ]);
 
       expect(settled.filter((result) => result.status === "fulfilled")).toHaveLength(1);
@@ -171,8 +181,8 @@ describe("updateStaff — concurrent demotion of the last two Owners", () => {
     const third = await staff("third", [owner._id]);
 
     const settled = await Promise.allSettled([
-      updateStaff({ staffId: id(first), actingStaffId: id(third), body: { roleIds: [id(plain)] } }),
-      updateStaff({ staffId: id(second), actingStaffId: id(third), body: { roleIds: [id(plain)] } }),
+      updateStaff({ staffId: id(first), actingStaffId: id(third), actor: await actingAdmin(), body: { roleIds: [id(plain)] } }),
+      updateStaff({ staffId: id(second), actingStaffId: id(third), actor: await actingAdmin(), body: { roleIds: [id(plain)] } }),
     ]);
 
     expect(settled.map((result) => result.status)).toEqual(["fulfilled", "fulfilled"]);

@@ -45,7 +45,13 @@ export async function activeOwnerRoleIds(): Promise<mongoose.Types.ObjectId[]> {
   return roles.map((role) => new mongoose.Types.ObjectId(String((role as unknown as { _id: unknown })._id)));
 }
 
-/** Active staff holding at least one of `ownerRoleIds`, optionally not counting one member. Call inside {@link withOwnerGuard}. */
+/**
+ * USABLE Owners: active staff holding at least one of `ownerRoleIds` who can actually sign in and act — they have set a
+ * password and are not waiting to replace a temporary one (`mustChangePassword` resolves to no permissions). A pending
+ * invitation or a freshly created account with a temporary password is not someone the store can rely on to administer
+ * it, so neither counts towards "another Owner remains". Optionally not counting one member. Call inside
+ * {@link withOwnerGuard}.
+ */
 export function countActiveOwners(ownerRoleIds: mongoose.Types.ObjectId[], excludeStaffId?: string): Promise<number> {
   if (ownerRoleIds.length === 0) return Promise.resolve(0);
   return staffUserRepository.count({
@@ -53,6 +59,8 @@ export function countActiveOwners(ownerRoleIds: mongoose.Types.ObjectId[], exclu
       ...(excludeStaffId ? { _id: { $ne: new mongoose.Types.ObjectId(excludeStaffId) } } : {}),
       active: true,
       roles: { $in: ownerRoleIds },
+      passwordHash: { $type: "string", $ne: "" },
+      mustChangePassword: { $ne: true },
     },
   });
 }
@@ -74,9 +82,8 @@ export interface RoleEditPatch {
  *
  * Permission-list edits that leave `grantsAll` and `isActive` alone cannot break the invariant and are always allowed.
  *
- * **There is no role-edit route today** (`/api/admin/roles` is read-only by a deliberate v1 scope decision), so nothing
- * calls this yet. It exists so the day a role write path is added it is born guarded; that route must call this inside
- * {@link withOwnerGuard}, in the same transaction as the write, or the guard is advisory.
+ * Called by `updateRole` (`admin/roles/manage-roles.ts`) inside {@link withOwnerGuard}, in the same transaction as the
+ * write — outside it the guard would be advisory.
  */
 export async function assertRoleEditKeepsAnOwner(roleId: string, patch: RoleEditPatch): Promise<void> {
   if (patch.grantsAll === undefined && patch.isActive === undefined) return;
@@ -93,6 +100,8 @@ export async function assertRoleEditKeepsAnOwner(roleId: string, patch: RoleEdit
   const isOwnerRoleAfter = grantsAllAfter && activeAfter;
   if (!isOwnerRoleNow || isOwnerRoleAfter) return;
 
-  const otherOwnerRoles = (await activeOwnerRoleIds()).filter((id) => id.toString() !== roleId);
+  // Compared as ObjectIds: a non-canonical spelling of the same id (uppercase hex) must not count the role as "another".
+  const self = new mongoose.Types.ObjectId(roleId);
+  const otherOwnerRoles = (await activeOwnerRoleIds()).filter((id) => !id.equals(self));
   if ((await countActiveOwners(otherOwnerRoles)) === 0) throw new ConflictError(LAST_OWNER_MESSAGE);
 }

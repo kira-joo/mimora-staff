@@ -3,10 +3,10 @@ import { MongoIdParamsDto } from "../../../../../server/catalog/dto/mongo-id-par
 import { UpdateStaffDto } from "../../../../../server/admin/dto/update-staff.dto";
 import { updateStaff } from "../../../../../server/admin/staff/update-staff";
 import { staffUserRepository } from "../../../../../server/core/repositories";
-import { CustomPermission } from "../../../../../common/authorization/authorization-registry";
+import { AppPermission } from "../../../../../common/authorization/authorization-registry";
 
 export const GET = createGetRoute({
-  auth: { permissions: [CustomPermission.STAFF_MANAGE] },
+  auth: { permissions: [AppPermission.STAFF_USER.READ_ONE] },
   params: MongoIdParamsDto,
   handler: async ({ params }) => {
     const staff = await staffUserRepository.findOne({ where: { _id: params.id }, relations: ["roles"] });
@@ -15,11 +15,11 @@ export const GET = createGetRoute({
 });
 
 export const PUT = createPutRoute({
-  auth: { permissions: [CustomPermission.STAFF_MANAGE] },
+  auth: { permissions: [AppPermission.STAFF_USER.UPDATE] },
   params: MongoIdParamsDto,
   body: UpdateStaffDto,
   handler: async ({ params, body, user }) => {
-    const staff = await updateStaff({ staffId: params.id, actingStaffId: user._id, body });
+    const staff = await updateStaff({ staffId: params.id, actingStaffId: user._id, actor: user, body });
     return staff;
   },
 });

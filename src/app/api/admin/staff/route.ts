@@ -3,10 +3,10 @@ import { ListAdminStaffQueryDto } from "../../../../server/admin/dto/list-admin-
 import { InviteStaffDto } from "../../../../server/admin/dto/invite-staff.dto";
 import { listStaff } from "../../../../server/admin/staff/list-staff";
 import { inviteStaff } from "../../../../server/admin/staff/invite-staff";
-import { CustomPermission } from "../../../../common/authorization/authorization-registry";
+import { AppPermission } from "../../../../common/authorization/authorization-registry";
 
 export const GET = createGetRoute({
-  auth: { permissions: [CustomPermission.STAFF_MANAGE] },
+  auth: { permissions: [AppPermission.STAFF_USER.READ] },
   query: ListAdminStaffQueryDto,
   handler: async ({ query }) => {
     const result = await listStaff(query);
@@ -14,11 +14,12 @@ export const GET = createGetRoute({
   },
 });
 
+/** Invites a staff member (no password set here). `POST /api/admin/staff/direct` is the alternative that sets one. */
 export const POST = createPostRoute({
-  auth: { permissions: [CustomPermission.STAFF_MANAGE] },
+  auth: { permissions: [AppPermission.STAFF_USER.CREATE] },
   body: InviteStaffDto,
-  handler: async ({ body }) => {
-    const staff = await inviteStaff(body);
+  handler: async ({ body, user }) => {
+    const staff = await inviteStaff(body, user);
     return staff;
   },
 });

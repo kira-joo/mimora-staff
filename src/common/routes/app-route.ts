@@ -22,6 +22,8 @@ export const AppRoute = {
   PRODUCT_NEW: "/catalog/products/new",
   /** The New product page pre-filled from an existing product. */
   PRODUCT_CLONE: (id: string) => `/catalog/products/new?from=${encodeURIComponent(id)}`,
+  /** Drag-and-drop manual order, scoped to all products, a category or a collection. */
+  PRODUCTS_ARRANGE: "/catalog/products/arrange",
   PRODUCT: (id: string) => `/catalog/products/${encodeURIComponent(id)}`,
   CATEGORIES: "/catalog/categories",
   CATEGORY_NEW: "/catalog/categories/new",
@@ -65,7 +67,12 @@ export const AppRoute = {
   TEAM: "/team",
   TEAM_INVITE: "/team/invite",
   TEAM_MEMBER: (id: string) => `/team/${encodeURIComponent(id)}`,
+  TEAM_CREATE: "/team/create",
   ROLES: "/team/roles",
+  ROLE_NEW: "/team/roles/new",
+  ROLE: (id: string) => `/team/roles/${encodeURIComponent(id)}`,
+  /** The signed-in staff member's own profile and password. */
+  ACCOUNT: "/account",
   REPORTS: "/reports",
   ACTIVITY: "/activity",
 } as const;

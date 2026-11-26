@@ -42,6 +42,7 @@ import { PickupLocationModel } from "../../fulfilment/pickup-location.schema";
 import { AddressModel } from "../address.schema";
 import { ActivityLogModel } from "../activity-log.schema";
 import { PermissionModel, RoleModel } from "../authorization/role.model";
+import { DefaultRoleSeedModel } from "../authorization/default-role-seed.schema";
 import { RateLimitModel } from "../rate-limit/rate-limit.schema";
 import { StaffNotificationModel } from "../../notifications/staff-notification.schema";
 
@@ -115,4 +116,5 @@ export const ALL_MODELS = [
   // Authorization
   PermissionModel,
   RoleModel,
+  DefaultRoleSeedModel,
 ] as unknown as Model<never>[];

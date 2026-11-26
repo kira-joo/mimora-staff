@@ -41,7 +41,6 @@ export const CustomPermission = {
   CATALOG_PUBLISH: "Catalog.publish",
   /** Make the storefront-content draft live. Separate from editing it, so a merchandiser can prepare content an owner approves. */
   STOREFRONT_CONTENT_PUBLISH: "StorefrontContent.publish",
-  STAFF_MANAGE: "StaffUser.manage",
   ROLE_MANAGE: "Role.manage",
   ACTIVITY_READ: "ActivityLog.read",
   /** The three MDS §15a reports. Read-only, separately grantable — sales figures are not implied by order access. */
@@ -91,7 +90,6 @@ const CUSTOM_PERMISSION_NAMES: Record<string, string> = {
   [CustomPermission.ORDER_CANCEL]: "Cancel Order",
   [CustomPermission.CATALOG_PUBLISH]: "Publish Catalog",
   [CustomPermission.STOREFRONT_CONTENT_PUBLISH]: "Publish Storefront Content",
-  [CustomPermission.STAFF_MANAGE]: "Manage Staff",
   [CustomPermission.ROLE_MANAGE]: "Manage Roles",
   [CustomPermission.ACTIVITY_READ]: "Read Activity Log",
   [CustomPermission.REPORT_READ]: "Read Reports",

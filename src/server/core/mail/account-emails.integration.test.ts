@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { StoreProfileModel } from "../../content/store-profile.schema";
 import { CustomerModel } from "../../identity/customer.schema";
 import { StaffUserModel } from "../../identity/staff-user.schema";
+import { RoleModel } from "../authorization/role.model";
 import { inviteStaff } from "../../admin/staff/invite-staff";
 import { requestPasswordReset } from "../../shop/auth/forgot-password";
 import { hashVerificationToken } from "../../shop/auth/hash-verification-token";
@@ -85,7 +86,11 @@ describe("account emails carry a link, not a bare token", () => {
   });
 
   it("staff invitation: an English /accept-invite?token= link on the console's origin", async () => {
-    const staff = await inviteStaff({ name: "Alice", email: "alice@example.com" });
+    // A real, active inviter whose session may invite (StaffUser.create via full access).
+    const role = await RoleModel.create({ name: `Inviters-${new mongoose.Types.ObjectId()}`, grantsAll: true, permissions: [], isActive: true });
+    const inviter = await StaffUserModel.create({ name: "Inviter", email: `inviter-${new mongoose.Types.ObjectId()}@example.com`, roles: [role._id] });
+    const staff = await inviteStaff({ name: "Alice", email: "alice@example.com" }, { _id: String(inviter._id), tokenVersion: inviter.tokenVersion, roles: [{ name: role.name, grantsAll: true, permissions: [] }] });
+    await RoleModel.deleteOne({ _id: role._id });
     const sent = sendSpy.mock.calls[0]![0];
     expect(sent).toMatchObject({ channel: "EMAIL", to: "alice@example.com", template: "staff-invitation" });
     expect(sent.body).toContain("https://console.shop.example/accept-invite?token=");

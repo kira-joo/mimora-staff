@@ -68,6 +68,23 @@ export class StaffUserSchema {
   @MongoField({ type: Date, required: false })
   lastLoginAt?: Date;
 
+  /**
+   * Set when an administrator created the account with a password they chose (`create-staff-direct.ts`) and asked
+   * for it to be replaced. While set, `resolveStaffUser` resolves the account with NO roles, so every permissioned
+   * `/api/admin/**` route refuses it (403) — the only things it can do are read and change its own account. Cleared
+   * by `changeOwnPassword`. Absent on every account that never needed it.
+   */
+  @MongoField({ type: Boolean, required: false })
+  mustChangePassword?: boolean;
+
+  /**
+   * Set when the password changes: no refresh-token family started before this instant may be renewed
+   * (`refreshStaffSession`). Revoking every family at the change is not enough on its own — a rotation already in
+   * flight inserts its successor AFTER claiming the old token, so it can land just after the revocation sweep.
+   */
+  @MongoField({ type: Date, required: false })
+  sessionsValidFrom?: Date;
+
   @MongoField({ type: Number, default: 1 })
   tokenVersion!: number;
 }

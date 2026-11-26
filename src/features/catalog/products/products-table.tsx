@@ -2,12 +2,12 @@
 
 import { RouteButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { FeatureTable } from "@kira-joo/frontend-toolkit-tailwind/table";
-import { Copy, Plus } from "lucide-react";
+import { ArrowUpDown, Copy, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { listCategoriesEndpoint } from "src/api/categories.endpoints";
 import { listProductGroupsEndpoint } from "src/api/product-groups.endpoints";
-import { listProductsEndpoint, type ProductListItem } from "src/api/products.endpoints";
+import { PRODUCT_SORT_OPTIONS, listProductsEndpoint, type ProductListItem } from "src/api/products.endpoints";
 import { AppPermission } from "src/common/authorization/authorization-registry";
 import { useStoreFormat } from "src/common/format/store-format";
 import { AppRoute } from "src/common/routes/app-route";
@@ -18,7 +18,7 @@ import { useCatalogOptions } from "../use-catalog-options";
 import { priceRange } from "./product-display";
 
 /**
- * Every product, in merchandising order, searchable by name and description.
+ * Every product, in its manual order by default (see Arrange order), searchable by name and description.
  * Price and sellable-variant count come from the product's listing rollup —
  * maintained by the backend with every variant write, never computed here.
  */
@@ -48,11 +48,18 @@ export function ProductsTable() {
           ],
         },
         { key: "categoryId", header: "Category", options: categories.options },
+        // Default (no choice) is the manual order.
+        { key: "sort", header: "Sort", options: PRODUCT_SORT_OPTIONS },
       ]}
       headerActions={
-        <RouteButton path={AppRoute.PRODUCT_NEW} permission={AppPermission.PRODUCT.CREATE} leftIcon={Plus}>
-          New product
-        </RouteButton>
+        <div className="flex flex-wrap gap-2">
+          <RouteButton path={AppRoute.PRODUCTS_ARRANGE} permission={AppPermission.PRODUCT.UPDATE} variant="outline" leftIcon={ArrowUpDown}>
+            Arrange order
+          </RouteButton>
+          <RouteButton path={AppRoute.PRODUCT_NEW} permission={AppPermission.PRODUCT.CREATE} leftIcon={Plus}>
+            New product
+          </RouteButton>
+        </div>
       }
       onRowClick={(row) => router.push(AppRoute.PRODUCT(row._id))}
       rowActions={[

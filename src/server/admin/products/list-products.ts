@@ -1,6 +1,8 @@
-import { SortOrder } from "@kira-joo/toolkit-common";
+import { buildSearchFilter, combineFilters, getMergedSchemaMetadata } from "@kira-joo/backend-toolkit-mongoose";
+import mongoose from "mongoose";
 import type { LocalizedString, ImageAsset, Money, PaginatedResponse } from "@kira-joo/toolkit-common";
-import { productRepository } from "../../core/repositories";
+import { ProductSchema } from "../../catalog/product.schema";
+import { findProductsPage } from "../../catalog/search/product-sort";
 import type { ListAdminProductsQueryDto } from "../dto/list-admin-products-query.dto";
 import type { WithTimestamps } from "../../core/with-timestamps";
 
@@ -29,21 +31,24 @@ export interface ProductListView {
   updatedAt: Date;
 }
 
-/** `search` is handled automatically by `@Searchable()` on Product.name/description — no manual $text filter needed. */
+/**
+ * Filters, free-text search and one of the `sort` orders (default `manual`). Search is the same `@Searchable()`
+ * name/description match the toolkit's list queries use; it is built here because a deterministic multi-key sort needs
+ * an aggregation, which the repository's single-field sort cannot express.
+ */
 export async function listProducts(query: ListAdminProductsQueryDto): Promise<PaginatedResponse<ProductListView>> {
-  const { categoryId, brandId, collectionId, lifecycle, ...rest } = query;
-  const where: Record<string, unknown> = {};
+  const { categoryId, brandId, collectionId, lifecycle, search, ids, sort = "manual", page, limit } = query;
+  const objectId = (id: string) => new mongoose.Types.ObjectId(id);
+  const filter = combineFilters(
+    categoryId ? { categoryId: objectId(categoryId) } : undefined,
+    brandId ? { brandId: objectId(brandId) } : undefined,
+    collectionId ? { collectionIds: objectId(collectionId) } : undefined,
+    lifecycle ? { lifecycle } : undefined,
+    ids?.length ? { _id: { $in: ids.map(objectId) } } : undefined,
+    buildSearchFilter(getMergedSchemaMetadata(ProductSchema), search)
+  );
 
-  if (categoryId) where.categoryId = categoryId;
-  if (brandId) where.brandId = brandId;
-  if (collectionId) where.collectionIds = collectionId;
-  if (lifecycle) where.lifecycle = lifecycle;
-
-  const result = await productRepository.findAllAndCountPublic({
-    where,
-    sort: { field: "order", order: SortOrder.ASC },
-    query: rest,
-  });
+  const result = await findProductsPage(filter, sort, { page, limit });
 
   return {
     ...result,

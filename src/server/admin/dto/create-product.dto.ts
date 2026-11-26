@@ -9,8 +9,6 @@ import {
   IsArray,
   ValidateNested,
   IsEnum,
-  IsInt,
-  Min,
   IsDateString,
 } from "class-validator";
 import { ImageAssetDto, LocalizedStringDto } from "@kira-joo/backend-toolkit-core";
@@ -111,9 +109,4 @@ export class CreateProductDto {
   @IsOptional()
   @IsDateString()
   publishAt?: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  order?: number;
 }

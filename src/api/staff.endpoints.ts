@@ -15,6 +15,8 @@ export interface StaffMember {
   email: string;
   roles: StaffRole[];
   active: boolean;
+  /** Set while a directly created account has not yet replaced its first password. */
+  mustChangePassword?: boolean;
   /** Absent until the first sign-in. */
   lastLoginAt?: string;
   createdAt?: string;
@@ -31,6 +33,16 @@ export interface InviteStaffInput {
   name: string;
   email: string;
   roleIds?: string[];
+}
+
+/** Direct creation: the administrator sets the first password (hashed server-side, never returned). */
+export interface CreateStaffDirectInput {
+  name: string;
+  email: string;
+  password: string;
+  roleIds?: string[];
+  /** Defaults to true on the server: the person must replace the password before doing anything else. */
+  mustChangePassword?: boolean;
 }
 
 /** Every field is optional; a roleIds or active field — even unchanged — signs the person out, so send only what changed. */
@@ -63,6 +75,12 @@ export const getStaffEndpoint: Endpoint<{ params: { id: string }; returnType: St
 
 export const inviteStaffEndpoint: Endpoint<{ body: InviteStaffInput; returnType: StaffMember & { invitation: StaffInvitation } }> = {
   url: STAFF,
+  methodType: MethodType.POST,
+};
+
+/** Creates an active account with a password, instead of an invitation. */
+export const createStaffDirectEndpoint: Endpoint<{ body: CreateStaffDirectInput; returnType: StaffMember }> = {
+  url: `${STAFF}/direct`,
   methodType: MethodType.POST,
 };
 

@@ -10,6 +10,10 @@ import { staffUserRepository } from "../repositories";
  * token: the JWT carries only `sub`/`tokenVersion`, so deactivating a staff
  * account or changing their role takes effect on the very next request
  * rather than waiting for the access token to expire.
+ *
+ * **An account that must change its password resolves with no roles** (`mustChangePassword`), so every permissioned
+ * route refuses it until it has; `auth: true` routes — its own account, its own password — still work. This is the
+ * enforcement; the console's redirect to the account page is only the guidance.
  */
 export async function resolveStaffUser(userId: string): Promise<AuthUser | null> {
   const user = await staffUserRepository.findOne({
@@ -20,11 +24,13 @@ export async function resolveStaffUser(userId: string): Promise<AuthUser | null>
 
   if (!user || !user.active) return null;
 
+  const mustChangePassword = user.mustChangePassword === true;
   return {
     _id: String(user._id),
     tokenVersion: user.tokenVersion,
-    roles: resolveUserRoles(user.roles as unknown as Parameters<typeof resolveUserRoles>[0]),
+    roles: mustChangePassword ? [] : resolveUserRoles(user.roles as unknown as Parameters<typeof resolveUserRoles>[0]),
     name: user.name,
     email: user.email,
+    ...(mustChangePassword ? { mustChangePassword } : {}),
   };
 }

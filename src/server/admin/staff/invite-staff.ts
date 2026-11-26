@@ -1,8 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { ConflictError, DuplicateKeyError, NotFoundError } from "@kira-joo/backend-toolkit-core";
+import type { AuthUser } from "@kira-joo/backend-toolkit-core";
 import mongoose from "mongoose";
 import { staffUserRepository } from "../../core/repositories";
-import { assertRolesExist } from "../../identity/assert-roles-exist";
+import { assertCanAssignRoles, assertCanManageStaff, loadActorAccess, type RequestActor } from "../roles/role-access";
+import { AppPermission } from "../../../common/authorization/authorization-registry";
+import { withOwnerGuard } from "./owner-invariant";
 import { sendStaffInvitationEmail } from "../../core/mail/send-account-emails";
 import { hashVerificationToken } from "../../shop/auth/hash-verification-token";
 import type { InviteStaffDto } from "../dto/invite-staff.dto";
@@ -51,24 +54,27 @@ async function sendInvitation(email: string, token: string, name?: string): Prom
  * `/api/admin/auth/login`. The rest of the `/api/admin/auth/**` surface —
  * `me`, `token/refresh`, `token/logout` — exists alongside it.
  */
-export async function inviteStaff(dto: InviteStaffDto) {
+export async function inviteStaff(dto: InviteStaffDto, actor: RequestActor) {
   const email = dto.email.toLowerCase().trim();
 
   if (await staffUserRepository.findOne({ where: { email }, select: { _id: true }, skipThrowError: true })) {
     throw new ConflictError("A staff member with this email already exists.");
   }
 
-  await assertRolesExist(dto.roleIds ?? []);
-
   const invitation = mintInvitation(new Date());
 
   try {
-    const created = await staffUserRepository.save({
-      name: dto.name.trim(),
-      email,
-      roles: (dto.roleIds ?? []).map((id) => new mongoose.Types.ObjectId(id)),
-      passwordResetTokenHash: invitation.tokenHash,
-      passwordResetExpiresAt: invitation.expiresAt,
+    // Checked and written in one serialised transaction with every role edit/delete: 400 for a role that does not
+    // exist, 403 for one conferring access the inviter does not hold — judged on the state the write commits against.
+    const created = await withOwnerGuard(async () => {
+      await assertCanAssignRoles(await loadActorAccess(actor, AppPermission.STAFF_USER.CREATE), dto.roleIds ?? []);
+      return staffUserRepository.save({
+        name: dto.name.trim(),
+        email,
+        roles: (dto.roleIds ?? []).map((id) => new mongoose.Types.ObjectId(id)),
+        passwordResetTokenHash: invitation.tokenHash,
+        passwordResetExpiresAt: invitation.expiresAt,
+      });
     });
 
     await sendInvitation(email, invitation.token, dto.name.trim());
@@ -91,14 +97,22 @@ export async function inviteStaff(dto: InviteStaffDto) {
  * is refused: re-inviting must never become a way to reset someone's
  * password.
  */
-export async function reinviteStaff(staffId: string): Promise<StaffInvitation> {
+export async function reinviteStaff(staffId: string, actor: RequestActor): Promise<StaffInvitation> {
   const invitation = mintInvitation(new Date());
 
-  const updated = await staffUserRepository.updateAtomic(
-    { _id: staffId, passwordHash: { $exists: false } },
-    { $set: { passwordResetTokenHash: invitation.tokenHash, passwordResetExpiresAt: invitation.expiresAt } },
-    { skipThrowError: true }
-  );
+  // The new link activates the account with its roles, so only someone who covers those roles may mint it — otherwise
+  // re-inviting a pending Owner and following the link yourself would be a way to become one. Checked in the same
+  // serialised transaction as the write, so a promotion committed a moment earlier is seen.
+  const updated = await withOwnerGuard(async () => {
+    const exists = await staffUserRepository.findOne({ where: { _id: staffId }, select: { _id: true }, skipThrowError: true });
+    if (!exists) throw new NotFoundError("StaffUser was not found");
+    await assertCanManageStaff(await loadActorAccess(actor, AppPermission.STAFF_USER.CREATE), staffId);
+    return staffUserRepository.updateAtomic(
+      { _id: staffId, passwordHash: { $exists: false } },
+      { $set: { passwordResetTokenHash: invitation.tokenHash, passwordResetExpiresAt: invitation.expiresAt } },
+      { skipThrowError: true }
+    );
+  });
   if (!updated) {
     const exists = await staffUserRepository.findOne({ where: { _id: staffId }, select: { _id: true }, skipThrowError: true });
     if (!exists) throw new NotFoundError("StaffUser was not found");

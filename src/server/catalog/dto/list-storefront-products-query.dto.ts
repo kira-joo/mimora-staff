@@ -1,5 +1,6 @@
 import { BaseFindQueryDto, ToArray, ToBoolean } from "@kira-joo/backend-toolkit-core";
 import { IsBoolean, IsIn, IsMongoId, IsOptional, Matches } from "class-validator";
+import { PRODUCT_LIST_SORTS } from "../search/product-sort";
 
 /**
  * Matches a non-negative decimal amount with up to 2 fraction digits. Deliberately NOT the bounded stored-money pattern
@@ -14,7 +15,7 @@ const ATTRIBUTE_FILTER_PATTERN = /^[^:\s][^:]*:.+$/;
 /** `axis:value` — a non-empty axis key with no colon or whitespace, then a non-empty value (split at the FIRST colon, so a value may itself contain spaces). */
 const OPTION_FILTER_PATTERN = /^[^:\s][^:]*:.+$/;
 
-export const STOREFRONT_PRODUCT_SORTS = ["newest", "price_asc", "price_desc"] as const;
+export const STOREFRONT_PRODUCT_SORTS = PRODUCT_LIST_SORTS;
 
 /**
  * Query DTO for `GET /api/storefront/products`. Extends `search`/`page`/
@@ -22,7 +23,7 @@ export const STOREFRONT_PRODUCT_SORTS = ["newest", "price_asc", "price_desc"] as
  * `BaseFindQueryDto` with the filters the `CatalogSearchPort` supports.
  *
  * - `categoryId` also matches the category's published descendants.
- * - `sort` takes precedence over `sortBy`; default order is newest first.
+ * - `sort` takes precedence over `sortBy`; with neither, the order is the owner's manual arrangement (`manual`).
  * - `attr` is repeated `attr=key:value` (split at the FIRST colon). Values of
  *   one key are alternatives, different keys all must match.
  * - `opt` is repeated `opt=axis:value` over the variant option axes (size,

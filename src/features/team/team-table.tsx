@@ -7,7 +7,7 @@ import { Check, Mail, Pencil, Plus, Slash, UserCheck, UserX } from "lucide-react
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import { listStaffEndpoint, updateStaffEndpoint, type StaffMember } from "src/api/staff.endpoints";
-import { CustomPermission } from "src/common/authorization/authorization-registry";
+import { AppPermission } from "src/common/authorization/authorization-registry";
 import { runAction } from "src/common/feedback/run-action";
 import { useStoreFormat } from "src/common/format/store-format";
 import { AppRoute } from "src/common/routes/app-route";
@@ -41,9 +41,14 @@ export function TeamTable() {
       searchPlaceholder="Search name or email"
       defaultLimit={25}
       headerActions={
-        <RouteButton path={AppRoute.TEAM_INVITE} permission={CustomPermission.STAFF_MANAGE} leftIcon={Plus}>
-          Invite member
-        </RouteButton>
+        <div className="flex flex-wrap gap-2">
+          <RouteButton path={AppRoute.TEAM_INVITE} permission={AppPermission.STAFF_USER.CREATE} leftIcon={Mail} variant="outline">
+            Invite by link
+          </RouteButton>
+          <RouteButton path={AppRoute.TEAM_CREATE} permission={AppPermission.STAFF_USER.CREATE} leftIcon={Plus}>
+            Create account
+          </RouteButton>
+        </div>
       }
       onRowClick={(row) => router.push(AppRoute.TEAM_MEMBER(row._id))}
       emptyMessage="No team members match"

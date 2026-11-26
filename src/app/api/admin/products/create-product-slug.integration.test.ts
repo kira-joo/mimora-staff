@@ -166,7 +166,7 @@ describe("console create — from a clone", () => {
     expect(product._id).not.toBe(sourceId);
     expect(product.lifecycle).toBe("draft");
     expect(product.images ?? []).toEqual([]);
-    expect(product.order).toBe(0);
+    expect(product.order).toBe(8); // appended after the source (7), never copied from it
     expect(product.collectionIds).toEqual([collectionIds[0]]);
     expect(product.attributes.map((a) => [a.key, a.values.map((v) => v.value.en)])).toEqual([
       ["material", ["Silver"]],

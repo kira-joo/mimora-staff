@@ -266,7 +266,7 @@ describe("protected admin access", () => {
     expect(stale.status).toBe(401);
   });
 
-  it("refuses a staff member without StaffUser.manage (403), and allows one who has it", async () => {
+  it("refuses a staff member without StaffUser.create (403), and allows one who has it", async () => {
     const plain = await createStaff();
     const forbidden = await inviteStaff(
       request("/api/admin/staff", { body: { name: "New", email: "new@example.com" }, cookies: { [STAFF_SESSION_COOKIE]: await accessCookieFor(plain) } })

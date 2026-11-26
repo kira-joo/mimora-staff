@@ -4,8 +4,9 @@ import { AuthUserProvider, clearAuthenticatedQueries, requester, type AuthUser }
 import { DialogProvider } from "@kira-joo/frontend-toolkit-tailwind/dialog";
 import { SideNav, SideNavProvider, SideNavTrigger } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { LogOut } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { logoutEndpoint } from "src/api/auth.endpoints";
 import { DIALOG_LABELS } from "src/common/config/dialog-labels.constant";
 import { CONSOLE_NAV } from "src/common/navigation/console-nav";
@@ -13,7 +14,7 @@ import { AppRoute } from "src/common/routes/app-route";
 import { NotificationBell } from "src/features/notifications/notification-bell";
 import { queryClient } from "src/providers/app-providers";
 
-export type ConsoleUser = AuthUser & { name?: string; email?: string };
+export type ConsoleUser = AuthUser & { name?: string; email?: string; mustChangePassword?: boolean };
 
 /**
  * The authenticated frame: the toolkit's SideNav (permission-filtered,
@@ -27,6 +28,14 @@ export type ConsoleUser = AuthUser & { name?: string; email?: string };
  */
 export function ConsoleShell({ user, children }: { user: ConsoleUser; children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  // An account created with a temporary password can do nothing until it picks its own (the API refuses every
+  // permissioned route); send it to the one page that works rather than a screen of "no access".
+  const mustChangePassword = user.mustChangePassword === true;
+  useEffect(() => {
+    if (mustChangePassword && pathname !== AppRoute.ACCOUNT) router.replace(AppRoute.ACCOUNT);
+  }, [mustChangePassword, pathname, router]);
 
   return (
     <AuthUserProvider user={user}>
@@ -66,12 +75,16 @@ function ConsoleTopBar({ user }: { user: ConsoleUser }) {
       <SideNavTrigger />
       <div className="ms-auto flex min-w-0 items-center gap-3">
         <NotificationBell />
-        <div className="min-w-0 text-end leading-tight">
-          <p className="truncate font-medium text-[var(--st-ink)]" dir="auto">
+        <Link
+          href={AppRoute.ACCOUNT}
+          aria-label={`My account: ${user.name ?? user.email ?? ""}`}
+          className="flex min-h-[var(--st-tap-min)] min-w-0 flex-col justify-center px-1 text-end leading-tight hover:bg-[var(--st-canvas)]"
+        >
+          <span className="truncate font-medium text-[var(--st-ink)]" dir="auto">
             {user.name ?? user.email}
-          </p>
-          <p className="truncate text-[13px] text-[var(--st-ink-muted)]">{role ?? "No role"}</p>
-        </div>
+          </span>
+          <span className="truncate text-[13px] text-[var(--st-ink-muted)]">{role ?? "No role"}</span>
+        </Link>
         <button
           type="button"
           onClick={signOut}

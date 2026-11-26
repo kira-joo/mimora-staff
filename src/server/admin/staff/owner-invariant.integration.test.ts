@@ -25,7 +25,9 @@ afterAll(async () => {
 });
 
 const role = (name: string, grantsAll: boolean, isActive = true) => RoleModel.create({ name, grantsAll, permissions: [], isActive });
-const staff = (name: string, roles: mongoose.Types.ObjectId[], active = true) => StaffUserModel.create({ name, email: `${name}-${new mongoose.Types.ObjectId()}@example.com`, roles, active });
+/** A usable staff member by default: active, with a password, and no pending password change. */
+const staff = (name: string, roles: mongoose.Types.ObjectId[], active = true, extra: Record<string, unknown> = { passwordHash: "test-hash" }) =>
+  StaffUserModel.create({ name, email: `${name}-${new mongoose.Types.ObjectId()}@example.com`, roles, active, ...extra });
 const id = (document: { _id: mongoose.Types.ObjectId }) => document._id.toString();
 const guarded = (roleId: string, patch: { grantsAll?: boolean; isActive?: boolean }) => withOwnerGuard(() => assertRoleEditKeepsAnOwner(roleId, patch));
 
@@ -66,6 +68,26 @@ describe("assertRoleEditKeepsAnOwner", () => {
     await staff("dormant", [owner._id], false);
 
     await expect(guarded(id(custom), { grantsAll: false })).rejects.toThrow(/last active Owner/);
+  });
+
+  it("an Owner who cannot act yet — a pending invitation, or a temporary password not yet replaced — does not count", async () => {
+    const custom = await role("Custom owners", true);
+    const owner = await role("Owner", true);
+    await staff("a", [custom._id]);
+    const invited = await staff("invited", [owner._id], true, {});
+    await expect(guarded(id(custom), { grantsAll: false })).rejects.toThrow(/last active Owner/);
+
+    await StaffUserModel.updateOne({ _id: invited._id }, { $set: { passwordHash: "test-hash", mustChangePassword: true } });
+    await expect(guarded(id(custom), { grantsAll: false })).rejects.toThrow(/last active Owner/);
+
+    await StaffUserModel.updateOne({ _id: invited._id }, { $unset: { mustChangePassword: "" } });
+    await expect(guarded(id(custom), { grantsAll: false })).resolves.toBeUndefined();
+  });
+
+  it("a non-canonical (uppercase) spelling of the role's own id does not count the role as 'another'", async () => {
+    const custom = await role("Custom owners", true);
+    await staff("a", [custom._id]);
+    await expect(guarded(id(custom).toUpperCase(), { grantsAll: false })).rejects.toThrow(/last active Owner/);
   });
 
   it("edits that do not touch grantsAll/isActive are always allowed, and so is editing a role nobody holds", async () => {

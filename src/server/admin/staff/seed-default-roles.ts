@@ -1,6 +1,7 @@
 import type mongoose from "mongoose";
 import type { PermissionSchema } from "@kira-joo/backend-toolkit-mongoose";
 import { RoleModel } from "../../core/authorization/role.model";
+import { DefaultRoleSeedModel } from "../../core/authorization/default-role-seed.schema";
 import { permissionRepository, roleRepository } from "../../core/repositories";
 import { AppPermission, CustomPermission } from "../../../common/authorization/authorization-registry";
 
@@ -29,7 +30,13 @@ import { AppPermission, CustomPermission } from "../../../common/authorization/a
  * includes it. Fulfilment, Support and Merchandiser do not hold it — sales
  * figures are not implied by order or catalog access.
  */
-const DEFAULT_ROLE_DEFINITIONS: Array<{ name: string; grantsAll?: boolean; permissionKeys?: string[] }> = [
+export interface DefaultRoleDefinition {
+  name: string;
+  grantsAll?: boolean;
+  permissionKeys?: string[];
+}
+
+export const DEFAULT_ROLE_DEFINITIONS: DefaultRoleDefinition[] = [
   {
     name: "Owner",
     grantsAll: true,
@@ -132,81 +139,141 @@ const DEFAULT_ROLE_DEFINITIONS: Array<{ name: string; grantsAll?: boolean; permi
   },
 ];
 
+
+export interface SeedDefaultRolesResult {
+  created: string[];
+  skipped: string[];
+  /** Default permission keys added to an existing role this run, by definition name. */
+  permissionsAdded: Record<string, string[]>;
+}
+
+type StoredRole = { _id: mongoose.Types.ObjectId; name: string; permissions?: Array<{ toString(): string }> };
+type SeedRecord = { definition: string; roleId: mongoose.Types.ObjectId; seededPermissionKeys: string[] };
+
 /**
- * Seeds the five default personas, and tops up their permissions — **additive only**.
+ * Seeds the default roles once, and afterwards adds ONLY permission keys a release introduces — never one the merchant
+ * removed. Roles are editable (`/api/admin/roles`), so the seed must not undo an Owner's edits at the next deploy.
  *
- * - **A missing role is created** with its default permissions, as one `bulkWrite()` of `upsert: true` updates so two
- *   cold-starting instances cannot both insert one (`RoleSchema` carries no `@Unique()` on `name`, so a naive
- *   find-then-create would let both observe "no Owner role yet").
- * - **An existing default role gains any default permission it lacks** (`$addToSet`) and loses nothing. This is what
- *   lets a release add a permission (`Notification.read` was the first) to the roles that should have it without a
- *   migration: seeding used to be insert-only, so a database seeded before the key existed never received it.
- *   Permissions a merchant added, the role's `grantsAll` and `isActive`, and its name are never touched.
- * - **Only the default role names are ever written.** A role a merchant created under any other name is invisible here.
+ * Each definition has a `DefaultRoleSeed` record naming the role document it produced (by id) and every key the seed
+ * has ever granted it:
  *
- * Known trade-off, deliberate: because the seed cannot tell "never had it" from "had it and it was removed", a default
- * permission a merchant later REMOVES from a default role is added back at the next boot. Roles cannot be edited from the
- * console today (`/api/admin/roles` is read-only), so nothing can remove one yet; the day a role-edit route exists the
- * seed needs a per-role "seeded" marker first, or removals will not stick.
+ * - **No record, no role of that name** (a new database): the role is created with its defaults and a record written.
+ * - **No record, a role of that name exists** (a database seeded before records existed — production on the first boot
+ *   of this release): the role is ADOPTED unchanged — nothing added or removed — and a record lists all its current
+ *   defaults as seeded, so from now on removals stick and only a later release's new keys are offered.
+ * - **A record**: only keys missing from `seededPermissionKeys` are added — a key a later release adds to a definition.
+ *   A role the merchant renamed is still found by id; a role the merchant DELETED is not recreated.
  *
- * Must run after `reconcilePermissions()` (`instrumentation.ts`), since it resolves each `Entity.action` key to the
- * `Permission` document's `_id`.
+ * Permissions a merchant added, `grantsAll`, `isActive` and the name are never written to an existing role. Idempotent:
+ * a routine boot reads twice and writes nothing. Must run after `reconcilePermissions()` (keys resolve to `_id`s).
  */
-export async function seedDefaultRoles(): Promise<{ created: string[]; skipped: string[]; permissionsAdded: Record<string, string[]> }> {
-  const allKeys = DEFAULT_ROLE_DEFINITIONS.flatMap((role) => role.permissionKeys ?? []);
+export async function seedDefaultRoles(definitions: readonly DefaultRoleDefinition[] = DEFAULT_ROLE_DEFINITIONS): Promise<SeedDefaultRolesResult> {
+  const allKeys = [...new Set(definitions.flatMap((role) => role.permissionKeys ?? []))];
   // `PermissionSchema` (toolkit-owned) doesn't declare `_id`; every stored document has one.
   const permissions = (await permissionRepository.findAll({
     where: { key: { $in: allKeys } },
     select: { _id: true, key: true },
   })) as Array<PermissionSchema & { _id: mongoose.Types.ObjectId }>;
   const idByKey = new Map(permissions.map((permission) => [permission.key, permission._id]));
-  const resolve = (keys: string[] | undefined) =>
-    (keys ?? []).map((key) => {
-      const id = idByKey.get(key);
-      if (!id) throw new Error(`seedDefaultRoles: permission "${key}" not found — run reconcilePermissions() first.`);
-      return id;
-    });
-
-  const existing = (await roleRepository.findAll({
-    where: { name: { $in: DEFAULT_ROLE_DEFINITIONS.map((role) => role.name) } },
-    select: { name: true, permissions: true },
-  })) as unknown as Array<{ name: string; permissions?: Array<{ toString(): string }> }>;
-  const heldByName = new Map(existing.map((role) => [role.name, new Set((role.permissions ?? []).map((id) => id.toString()))]));
-
-  // Resolved for every role up front, so a missing `Permission` document is one clear error whichever role it belongs to.
-  const idsByRole = new Map(DEFAULT_ROLE_DEFINITIONS.map((role) => [role.name, resolve(role.permissionKeys)]));
-
-  const permissionsAdded: Record<string, string[]> = {};
-  for (const role of DEFAULT_ROLE_DEFINITIONS) {
-    const held = heldByName.get(role.name);
-    const missing = held ? (role.permissionKeys ?? []).filter((key) => !held.has(idByKey.get(key)!.toString())) : [];
-    if (missing.length > 0) permissionsAdded[role.name] = missing;
+  for (const key of allKeys) {
+    if (!idByKey.has(key)) throw new Error(`seedDefaultRoles: permission "${key}" not found — run reconcilePermissions() first.`);
   }
+  const ids = (keys: readonly string[]) => keys.map((key) => idByKey.get(key)!);
 
-  // A role that exists and lacks nothing is not written at all, so a routine boot leaves `updatedAt` alone too.
-  const needsWrite = DEFAULT_ROLE_DEFINITIONS.filter((role) => !heldByName.has(role.name) || permissionsAdded[role.name]);
-  if (needsWrite.length > 0) {
-    await RoleModel.bulkWrite(
-      needsWrite.map((role) => {
-        const ids = idsByRole.get(role.name)!;
-        return {
-          updateOne: {
-            filter: { name: role.name },
-            // `$setOnInsert` and `$addToSet` may not name the same path, so a role with no permissions (Owner) sets the empty list on insert instead.
-            update:
-              ids.length > 0
-                ? { $setOnInsert: { name: role.name, grantsAll: role.grantsAll ?? false, isActive: true }, $addToSet: { permissions: { $each: ids } } }
-                : { $setOnInsert: { name: role.name, grantsAll: role.grantsAll ?? false, isActive: true, permissions: [] } },
-            upsert: true,
-          },
-        };
-      })
+  const records = (await DefaultRoleSeedModel.find({ definition: { $in: definitions.map((role) => role.name) } }).lean()) as unknown as SeedRecord[];
+  const recordByName = new Map(records.map((record) => [record.definition, record]));
+  const roles = (await roleRepository.findAll({
+    where: { $or: [{ _id: { $in: records.map((record) => record.roleId) } }, { name: { $in: definitions.map((role) => role.name) } }] },
+    select: { name: true, permissions: true },
+  })) as unknown as StoredRole[];
+  const roleById = new Map(roles.map((role) => [role._id.toString(), role]));
+  const roleByName = new Map(roles.map((role) => [role.name, role]));
+
+  const result: SeedDefaultRolesResult = { created: [], skipped: [], permissionsAdded: {} };
+
+  for (const definition of definitions) {
+    const defaults = definition.permissionKeys ?? [];
+    const record = recordByName.get(definition.name);
+
+    // The full-access Owner role is never left missing (the API refuses to delete it; `bootstrap-owner` needs it), so a
+    // record pointing at a vanished Owner role is treated as no record and the role is ensured again below.
+    const recordedRole = record ? roleById.get(record.roleId.toString()) : undefined;
+    if (record && (recordedRole || !definition.grantsAll)) {
+      const role = recordedRole;
+      // Deleted by the merchant: their decision stands.
+      if (!role) {
+        result.skipped.push(definition.name);
+        continue;
+      }
+      const seeded = new Set(record.seededPermissionKeys);
+      const fresh = defaults.filter((key) => !seeded.has(key));
+      result.skipped.push(definition.name);
+      if (fresh.length === 0) continue;
+      const held = new Set((role.permissions ?? []).map((id) => id.toString()));
+      const toAdd = fresh.filter((key) => !held.has(idByKey.get(key)!.toString()));
+      if (toAdd.length > 0) {
+        await RoleModel.updateOne({ _id: role._id }, { $addToSet: { permissions: { $each: ids(toAdd) } } });
+        result.permissionsAdded[definition.name] = toAdd;
+      }
+      await DefaultRoleSeedModel.updateOne({ definition: definition.name }, { $addToSet: { seededPermissionKeys: { $each: fresh } } });
+      continue;
+    }
+
+    let roleId: mongoose.Types.ObjectId;
+    const existing = roleByName.get(definition.name);
+    if (existing) {
+      // Adopted exactly as it stands: its permissions are the merchant's, so none is added or removed. From now on
+      // only a key a later release introduces is offered to it.
+      roleId = existing._id;
+      result.skipped.push(definition.name);
+    } else {
+      // An upsert keyed on the name, so concurrent cold starts converge on one document.
+      const upserted = await RoleModel.findOneAndUpdate(
+        { name: definition.name },
+        { $setOnInsert: { name: definition.name, grantsAll: definition.grantsAll ?? false, isActive: true, permissions: ids(defaults) } },
+        { upsert: true, new: true, projection: { _id: 1 } }
+      ).lean();
+      roleId = upserted!._id as mongoose.Types.ObjectId;
+      result.created.push(definition.name);
+    }
+
+    await DefaultRoleSeedModel.updateOne(
+      { definition: definition.name },
+      { $set: { roleId }, $addToSet: { seededPermissionKeys: { $each: defaults } } },
+      { upsert: true }
     );
   }
 
-  return {
-    created: DEFAULT_ROLE_DEFINITIONS.map((role) => role.name).filter((name) => !heldByName.has(name)),
-    skipped: DEFAULT_ROLE_DEFINITIONS.map((role) => role.name).filter((name) => heldByName.has(name)),
-    permissionsAdded,
-  };
+  return result;
+}
+
+/** The single coarse staff permission that granular `StaffUser.*` permissions replaced. No route checks it any more. */
+export const LEGACY_STAFF_MANAGE_KEY = "StaffUser.manage";
+
+/**
+ * One-way migration: an active role that held the retired `StaffUser.manage` (itself active) receives the granular
+ * permissions that now guard the same routes (`StaffUser.read`/`readOne`/`create`/`update`), so nobody loses access
+ * they had, and the legacy reference is then removed so the migration never repeats. Production held it on no role
+ * (2026-11-26), so there it is one read and nothing else.
+ */
+export async function migrateLegacyStaffManage(): Promise<{ rolesUpdated: number }> {
+  const legacy = (await permissionRepository.findOne({ where: { key: LEGACY_STAFF_MANAGE_KEY }, select: { _id: true, isActive: true }, skipThrowError: true })) as
+    | (PermissionSchema & { _id: mongoose.Types.ObjectId })
+    | null;
+  if (!legacy) return { rolesUpdated: 0 };
+
+  // A legacy grant that was switched off conferred nothing; turning it into live access now would be an escalation.
+  if (legacy.isActive) {
+    const replacementKeys = [AppPermission.STAFF_USER.READ, AppPermission.STAFF_USER.READ_ONE, AppPermission.STAFF_USER.CREATE, AppPermission.STAFF_USER.UPDATE];
+    const replacements = (await permissionRepository.findAll({ where: { key: { $in: replacementKeys } }, select: { _id: true } })) as unknown as Array<{ _id: mongoose.Types.ObjectId }>;
+    if (replacements.length !== replacementKeys.length) throw new Error("migrateLegacyStaffManage: StaffUser permissions missing — run reconcilePermissions() first.");
+    // Only ACTIVE roles: an inactive role's legacy grant conferred nothing either.
+    await RoleModel.updateMany({ permissions: legacy._id, isActive: true }, { $addToSet: { permissions: { $each: replacements.map((permission) => permission._id) } } });
+  }
+
+  // Then the legacy reference is retired, so this runs once per role: a replacement an Owner later removes is not put
+  // back at the next boot. Two writes, not one (MongoDB refuses $addToSet and $pull on one path); a crash between them
+  // only repeats the idempotent first write on the next boot.
+  const retired = await RoleModel.updateMany({ permissions: legacy._id }, { $pull: { permissions: legacy._id } });
+  return { rolesUpdated: retired.modifiedCount };
 }

@@ -11,6 +11,16 @@ import { listStaff } from "./list-staff";
 import { inviteStaff } from "./invite-staff";
 import { updateStaff } from "./update-staff";
 
+/**
+ * The acting administrator. These tests exercise other rules, so it has full access and the grant policy never
+ * intervenes; it has no password, so it never counts as a usable Owner in the last-Owner checks.
+ */
+async function actingAdmin(): Promise<{ _id: string; tokenVersion: number; roles: Array<{ name: string; grantsAll: boolean; permissions: string[] }> }> {
+  const role = await RoleModel.create({ name: `Acting-${new mongoose.Types.ObjectId()}`, grantsAll: true, permissions: [], isActive: true });
+  const admin = await StaffUserModel.create({ name: "Acting admin", email: `acting-${new mongoose.Types.ObjectId()}@example.com`, roles: [role._id] });
+  return { _id: String(admin._id), tokenVersion: admin.tokenVersion, roles: [{ name: role.name, grantsAll: true, permissions: [] }] };
+}
+
 process.env.MONGODB_URI ??= "mongodb://localhost:27020/store-platform-staff-test?replicaSet=rs0&directConnection=true";
 process.env.MONGODB_DB ??= "store-platform-staff-test";
 
@@ -68,7 +78,7 @@ describe("inviteStaff", () => {
   it("creates an account with no passwordHash, mints a reset token, and notifies by email", async () => {
     const sendSpy = vi.spyOn(outboundNotifier, "send").mockResolvedValue(undefined);
 
-    const staff = await inviteStaff({ name: "Alice", email: "Alice@Example.com" });
+    const staff = await inviteStaff({ name: "Alice", email: "Alice@Example.com" }, await actingAdmin());
 
     expect(staff?.email).toBe("alice@example.com");
     const stored = await StaffUserModel.findById(staff?._id)
@@ -85,7 +95,7 @@ describe("inviteStaff", () => {
     vi.spyOn(outboundNotifier, "send").mockResolvedValue(undefined);
     const role = await seedRole("Manager");
 
-    const staff = await inviteStaff({ name: "Alice", email: "alice@example.com", roleIds: [String(role._id)] });
+    const staff = await inviteStaff({ name: "Alice", email: "alice@example.com", roleIds: [String(role._id)] }, await actingAdmin());
 
     expect((staff?.roles as unknown as Array<{ _id: unknown }>).map((r) => String(r._id))).toEqual([
       String(role._id),
@@ -96,14 +106,14 @@ describe("inviteStaff", () => {
     vi.spyOn(outboundNotifier, "send").mockResolvedValue(undefined);
     await StaffUserModel.create({ name: "Existing", email: "alice@example.com", roles: [] });
 
-    await expect(inviteStaff({ name: "Alice", email: "alice@example.com" })).rejects.toThrow(ConflictError);
+    await expect(inviteStaff({ name: "Alice", email: "alice@example.com" }, await actingAdmin())).rejects.toThrow(ConflictError);
   });
 
   it("rejects a role id that does not exist", async () => {
     vi.spyOn(outboundNotifier, "send").mockResolvedValue(undefined);
 
     await expect(
-      inviteStaff({ name: "Alice", email: "alice@example.com", roleIds: [new mongoose.Types.ObjectId().toString()] })
+      inviteStaff({ name: "Alice", email: "alice@example.com", roleIds: [new mongoose.Types.ObjectId().toString()] }, await actingAdmin())
     ).rejects.toThrow(BadRequestError);
   });
 });
@@ -112,7 +122,7 @@ describe("updateStaff", () => {
   it("updates the name without bumping tokenVersion", async () => {
     const staff = await StaffUserModel.create({ name: "Alice", email: "alice@example.com", roles: [] });
 
-    await updateStaff({ staffId: String(staff._id), actingStaffId: "someone-else", body: { name: "Alicia" } });
+    await updateStaff({ staffId: String(staff._id), actingStaffId: "someone-else", actor: await actingAdmin(), body: { name: "Alicia" } });
 
     const updated = await StaffUserModel.findById(staff._id).lean();
     expect(updated?.name).toBe("Alicia");
@@ -126,7 +136,7 @@ describe("updateStaff", () => {
     await updateStaff({
       staffId: String(staff._id),
       actingStaffId: "someone-else",
-      body: { roleIds: [String(role._id)] },
+      actor: await actingAdmin(), body: { roleIds: [String(role._id)] },
     });
 
     const updated = await StaffUserModel.findById(staff._id).lean();
@@ -137,7 +147,7 @@ describe("updateStaff", () => {
   it("bumps tokenVersion when deactivated", async () => {
     const staff = await StaffUserModel.create({ name: "Alice", email: "alice@example.com", roles: [] });
 
-    await updateStaff({ staffId: String(staff._id), actingStaffId: "someone-else", body: { active: false } });
+    await updateStaff({ staffId: String(staff._id), actingStaffId: "someone-else", actor: await actingAdmin(), body: { active: false } });
 
     const updated = await StaffUserModel.findById(staff._id).lean();
     expect(updated?.active).toBe(false);
@@ -148,7 +158,7 @@ describe("updateStaff", () => {
     const staff = await StaffUserModel.create({ name: "Alice", email: "alice@example.com", roles: [] });
 
     await expect(
-      updateStaff({ staffId: String(staff._id), actingStaffId: String(staff._id), body: { active: false } })
+      updateStaff({ staffId: String(staff._id), actingStaffId: String(staff._id), actor: await actingAdmin(), body: { active: false } })
     ).rejects.toThrow(ConflictError);
 
     const unchanged = await StaffUserModel.findById(staff._id).lean();
@@ -162,7 +172,7 @@ describe("updateStaff", () => {
       updateStaff({
         staffId: String(staff._id),
         actingStaffId: "someone-else",
-        body: { roleIds: [new mongoose.Types.ObjectId().toString()] },
+        actor: await actingAdmin(), body: { roleIds: [new mongoose.Types.ObjectId().toString()] },
       })
     ).rejects.toThrow(BadRequestError);
   });

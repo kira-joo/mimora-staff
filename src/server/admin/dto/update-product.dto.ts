@@ -8,8 +8,6 @@ import {
   ArrayMaxSize,
   IsArray,
   ValidateNested,
-  IsInt,
-  Min,
   IsDateString,
 } from "class-validator";
 import { ImageAssetDto, LocalizedStringDto } from "@kira-joo/backend-toolkit-core";
@@ -106,11 +104,6 @@ export class UpdateProductDto {
   @ValidateNested()
   @Type(() => LocalizedStringDto)
   seoDescription?: LocalizedStringDto;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  order?: number;
 
   @IsOptional()
   @IsDateString()

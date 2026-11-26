@@ -28,7 +28,6 @@ export interface UpdateProductInput {
   }>;
   seoTitle?: LocalizedString;
   seoDescription?: LocalizedString;
-  order?: number;
   publishAt?: Date;
 }
 
@@ -81,7 +80,6 @@ export async function updateProduct(productId: string, input: UpdateProductInput
     if (input.attributes !== undefined) patch.attributes = input.attributes;
     if (input.seoTitle !== undefined) patch.seoTitle = input.seoTitle;
     if (input.seoDescription !== undefined) patch.seoDescription = input.seoDescription;
-    if (input.order !== undefined) patch.order = input.order;
     if (input.publishAt !== undefined) patch.publishAt = input.publishAt;
 
     // D-11: a live product cannot be edited into one missing its default locale.

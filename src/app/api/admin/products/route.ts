@@ -39,7 +39,6 @@ export const POST = createPostRoute({
       seoDescription: body.seoDescription,
       lifecycle: body.lifecycle,
       publishAt: body.publishAt ? new Date(body.publishAt) : undefined,
-      order: body.order,
     }, { onSlugTaken: query.onSlugTaken ?? "suffix" });
 
     return product;

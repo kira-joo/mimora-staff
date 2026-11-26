@@ -1,5 +1,6 @@
 import type { PaginatedResponse, SortOrder } from "@kira-joo/toolkit-common";
 import type { ProductSchema } from "../product.schema";
+import type { ProductListSort } from "./product-sort";
 
 export interface CatalogAttributeFilter {
   /** Matches `Product.attributes[].key` — e.g. `"material"`. */
@@ -15,7 +16,8 @@ export interface CatalogOptionFilter {
   value: string;
 }
 
-export type CatalogSort = "newest" | "price_asc" | "price_desc";
+/** See `product-sort.ts`. `manual` is the owner's arranged order and the default. */
+export type CatalogSort = ProductListSort;
 
 /** The scope a listing and its facet counts are both computed over. */
 export interface CatalogScope {
@@ -48,7 +50,7 @@ export interface CatalogSearchQuery extends CatalogScope {
   options?: CatalogOptionFilter[];
   /** Only products with at least one purchasable variant (`listing.purchasableVariantCount > 0`). */
   inStock?: boolean;
-  /** `newest` (default) is `createdAt` descending. Price sorts use `listing.minActivePrice`, products without a price last. Takes precedence over `sortBy`. */
+  /** `manual` (the default when neither `sort` nor `sortBy` is given) is the arranged order, ties newest first; `newest`/`oldest` are `createdAt`. Price sorts use `listing.minActivePrice`, products without a price last. Takes precedence over `sortBy`. */
   sort?: CatalogSort;
   /** Pass-through of the toolkit's single-field sort, for callers that do not use `sort`. */
   sortBy?: string;

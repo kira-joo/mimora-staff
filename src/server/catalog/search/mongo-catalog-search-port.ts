@@ -1,6 +1,5 @@
 import { BaseFindQueryDto } from "@kira-joo/backend-toolkit-core";
-import { resolvePagination } from "@kira-joo/backend-toolkit-mongoose";
-import { MONEY_SCALE, SortOrder, roundMoney, type PaginatedResponse } from "@kira-joo/toolkit-common";
+import { MONEY_SCALE, roundMoney, type PaginatedResponse } from "@kira-joo/toolkit-common";
 import mongoose from "mongoose";
 import { BrandModel } from "../brand.schema";
 import { CategoryModel } from "../category.schema";
@@ -8,10 +7,11 @@ import { ProductModel } from "../product.schema";
 import { VariantModel } from "../variant.schema";
 import { productRepository } from "../../core/repositories";
 import { collectCategoryTreeIds } from "./collect-category-tree";
+import { findProductsPage } from "./product-sort";
 import { optionPair } from "../rollups/listing-options";
 import { searchRegex, searchTokens } from "./normalize-search-text";
 import type { ProductSchema } from "../product.schema";
-import type { CatalogAttributeFacet, CatalogFacets, CatalogOptionFacet, CatalogScope, CatalogSearchPort, CatalogSearchQuery, CatalogSort } from "./catalog-search-port";
+import type { CatalogAttributeFacet, CatalogFacets, CatalogOptionFacet, CatalogScope, CatalogSearchPort, CatalogSearchQuery } from "./catalog-search-port";
 
 /**
  * MongoDB-native implementation of {@link CatalogSearchPort} — Arabic-aware
@@ -32,21 +32,15 @@ export const mongoCatalogSearchPort: CatalogSearchPort = {
       query.inStock ? { "listing.purchasableVariantCount": { $gt: 0 } } : {},
     ]);
 
-    if (query.sort === "price_asc" || query.sort === "price_desc") {
-      return searchByPrice(filter, query.sort, query.page, query.limit);
-    }
+    // `sort` wins; with neither `sort` nor a pass-through `sortBy`, the listing is the owner's manual order.
+    if (query.sort || !query.sortBy) return findProductsPage(filter, query.sort ?? "manual", { page: query.page, limit: query.limit });
 
     // `search` is already inside `filter` (normalised, brand- and SKU-aware); the toolkit's own `@Searchable` regex must not run on top of it.
     const listQuery = new BaseFindQueryDto();
     listQuery.page = query.page;
     listQuery.limit = query.limit;
-    if (query.sort === "newest") {
-      listQuery.sortBy = "createdAt";
-      listQuery.sortOrder = SortOrder.DESC;
-    } else if (query.sortBy) {
-      listQuery.sortBy = query.sortBy;
-      listQuery.sortOrder = query.sortOrder;
-    }
+    listQuery.sortBy = query.sortBy;
+    listQuery.sortOrder = query.sortOrder;
 
     return productRepository.findAllAndCountPublic({ where: filter, query: listQuery });
   },
@@ -169,43 +163,6 @@ async function buildSearchClause(search: string | undefined): Promise<Record<str
   );
 
   return { $and: perToken };
-}
-
-/**
- * Price sorts cannot go through the repository: "products without a price
- * last" needs a computed key, which only an aggregation can sort on. The
- * aggregation yields the ordered ids for the page; the documents themselves
- * are then loaded through the repository so they serialise exactly as every
- * other listing's do.
- */
-async function searchByPrice(filter: Record<string, unknown>, sort: Exclude<CatalogSort, "newest">, page?: number, limit?: number): Promise<PaginatedResponse<ProductSchema>> {
-  const pagination = resolvePagination({ page, limit });
-  const direction = sort === "price_asc" ? 1 : -1;
-
-  const [total, rows] = await Promise.all([
-    ProductModel.countDocuments(filter),
-    ProductModel.aggregate<{ _id: mongoose.Types.ObjectId }>([
-      { $match: filter },
-      // `sortPrice` in decimal: a Double 19.99 and an (older) Decimal128 19.99 are then equal, so the createdAt/_id
-      // tie-breakers decide between them, as they did when every record had the same type.
-      { $addFields: { noPrice: { $cond: [{ $in: [{ $type: "$listing.minActivePrice" }, ["missing", "null"]] }, 1, 0] }, sortPrice: { $toDecimal: "$listing.minActivePrice" } } },
-      { $sort: { noPrice: 1, sortPrice: direction, createdAt: -1, _id: -1 } },
-      { $skip: pagination.skip },
-      { $limit: pagination.limit },
-      { $project: { _id: 1 } },
-    ]),
-  ]);
-
-  const documents = await productRepository.findAll({ where: { _id: { $in: rows.map((row) => row._id) } } });
-  const byId = new Map(documents.map((document) => [document._id.toString(), document]));
-
-  return {
-    data: rows.flatMap((row) => byId.get(row._id.toString()) ?? []),
-    total,
-    page: pagination.page,
-    limit: pagination.limit,
-    totalPages: Math.ceil(total / pagination.limit),
-  };
 }
 
 /** A product matches when its own active price range OVERLAPS the query's — not merely when one bound falls inside it, since a product spanning $10-$50 is relevant to a $20-$30 query even though neither of its own bounds sits in that range. */

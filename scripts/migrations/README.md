@@ -100,3 +100,25 @@ Last resort: `mongorestore` from the step-2 backup.
 
 `copy-store-to-target.mjs` compares documents type-sensitively; copy only between databases on the same side of this
 migration.
+
+## Product manual order (`product-manual-order.mjs`) — optional
+
+`Product.order` is the persistent manual position (Staff console: Catalog > Products > Arrange order). The canonical
+order is `order` ascending, ties newest first (`createdAt` desc, then `_id` desc), so a catalogue where every product
+holds the default `0` already reads "newest first" and nothing has to be migrated. This script is the optional
+normalisation: it renumbers **every** product `1..N` in exactly that canonical order, so the visible order does not
+change and every position becomes unique.
+
+```bash
+# Dry run (default): prints the product count and how many would change. Writes nothing.
+node scripts/migrations/product-manual-order.mjs --env-file=.env.atlas.local
+
+# Apply — requires the database name typed exactly; optional --log= records every (id, from, to).
+node scripts/migrations/product-manual-order.mjs --env-file=.env.atlas.local --apply --confirm-db=<MONGODB_DB> [--log=<file>.jsonl]
+```
+
+Idempotent (a second run reports `would change: 0`), compare-and-set per product (one edited mid-run is skipped, run
+again), raw driver writes that set only `order` (no `updatedAt`), and any write needs the store-identity marker to name
+mimora. It prints whether the visible order is unchanged afterwards. It publishes no cache invalidation — none is needed,
+since nothing a shopper sees changes. `MONGODB_URI` / `MONGODB_DB` may also come from the environment. Rehearse on a
+scratch copy (`mongodump | mongorestore --nsFrom/--nsTo`), never on a database you are only reading.

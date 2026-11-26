@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { UnauthorizedError } from "@kira-joo/backend-toolkit-core";
-import { issueRefreshToken, revokeAllForSubject, revokeToken, rotateRefreshToken } from "@kira-joo/backend-toolkit-mongoose";
+import { issueRefreshToken, revokeAllForSubject, revokeFamily, revokeToken, rotateRefreshToken } from "@kira-joo/backend-toolkit-mongoose";
 import { comparePassword, hashPassword, signAuthToken } from "@kira-joo/backend-toolkit-next";
 import type mongoose from "mongoose";
 import { staffUserRepository } from "../../core/repositories";
@@ -58,8 +58,23 @@ export async function loginStaff(email: string, password: string, now: Date): Pr
     throw new UnauthorizedError(INVALID_CREDENTIALS);
   }
 
-  await staffUserRepository.updateAtomic({ _id: record._id }, { $set: { lastLoginAt: now } });
-  await issueStaffSession(record);
+  // The session is issued only if the password just verified is still the account's password — checked again AFTER
+  // the refresh family exists, so a password change racing this login either sees the family (and revokes it) or is
+  // seen here (and the family is revoked). Before or after, a login with the old password cannot outlive the change.
+  const [accessToken, refresh] = await Promise.all([
+    signAuthToken({ sub: record._id.toString(), tokenVersion: record.tokenVersion }, { expiresIn: STAFF_ACCESS_TOKEN_TTL_SECONDS }),
+    issueRefreshToken({ model: StaffRefreshTokenModel, subjectId: record._id, ttlMs: STAFF_REFRESH_TOKEN_TTL_MS }),
+  ]);
+  const stamped = await staffUserRepository.updateAtomic(
+    { _id: record._id, active: true, passwordHash: record.passwordHash, tokenVersion: record.tokenVersion },
+    { $set: { lastLoginAt: now } },
+    { skipThrowError: true }
+  );
+  if (!stamped) {
+    await revokeFamily(StaffRefreshTokenModel, refresh.familyId);
+    throw new UnauthorizedError(INVALID_CREDENTIALS);
+  }
+  await writeStaffSessionCookies({ accessToken, refreshToken: refresh.token });
   return record._id;
 }
 
@@ -81,6 +96,14 @@ export async function refreshStaffSession(presentedToken: string | null): Promis
   const staff = await staffUserRepository.findOne({ where: { _id: subjectId }, skipThrowError: true });
   if (!staff || !staff.active) {
     await revokeAllForSubject(StaffRefreshTokenModel, subjectId);
+    throw new UnauthorizedError();
+  }
+
+  // A family started before the last password change is dead, even if its successor slipped past that change's
+  // revocation sweep (the rotation above inserts it after claiming the old token). Read AFTER the rotation, so either
+  // the sweep saw the successor or this read sees the change.
+  if (staff.sessionsValidFrom && (await familyStartedAt(issued.familyId)) < staff.sessionsValidFrom.getTime()) {
+    await revokeFamily(StaffRefreshTokenModel, issued.familyId);
     throw new UnauthorizedError();
   }
 
@@ -134,6 +157,16 @@ export async function acceptStaffInvite(token: string, password: string, now: Da
   if (!activated) throw new UnauthorizedError(INVALID_INVITATION);
 
   await revokeAllForSubject(StaffRefreshTokenModel, activated._id);
+}
+
+/**
+ * When a refresh-token family began: its oldest surviving token's issue time (`expiresAt` minus the fixed TTL —
+ * millisecond-exact, unlike an ObjectId's one-second timestamp). Rotation never shortens a token's life, so the oldest
+ * row is the one issued at login (or the earliest still alive, which is no earlier than any change it outlived).
+ */
+async function familyStartedAt(familyId: string): Promise<number> {
+  const first = await StaffRefreshTokenModel.findOne({ familyId }, { expiresAt: 1 }).sort({ expiresAt: 1 }).lean<{ expiresAt: Date }>();
+  return first ? first.expiresAt.getTime() - STAFF_REFRESH_TOKEN_TTL_MS : 0;
 }
 
 let decoy: Promise<string> | undefined;

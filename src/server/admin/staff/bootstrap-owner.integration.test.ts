@@ -24,6 +24,7 @@ import { StaffUserModel } from "../../identity/staff-user.schema";
 import { hashVerificationToken } from "../../shop/auth/hash-verification-token";
 import { acceptStaffInvite, loginStaff } from "../auth/staff-auth";
 import { seedDefaultRoles } from "./seed-default-roles";
+import { DefaultRoleSeedModel } from "../../core/authorization/default-role-seed.schema";
 import { configureToolkit } from "../../core/toolkit.config";
 
 /*
@@ -56,13 +57,13 @@ beforeAll(async () => {
   await connectToDatabase();
 });
 beforeEach(async () => {
-  await Promise.all([StaffUserModel.deleteMany({}), ActivityLogModel.deleteMany({}), RoleModel.deleteMany({}), PermissionModel.deleteMany({}), mongoose.connection.db!.collection(LOCK_COLLECTION).deleteMany({})]);
+  await Promise.all([StaffUserModel.deleteMany({}), ActivityLogModel.deleteMany({}), RoleModel.deleteMany({}), DefaultRoleSeedModel.deleteMany({}), PermissionModel.deleteMany({}), mongoose.connection.db!.collection(LOCK_COLLECTION).deleteMany({})]);
   // Exactly what the backend does at boot (src/instrumentation.ts).
   await reconcilePermissions({ model: PermissionModel, definitions: ALL_PERMISSION_DEFINITIONS });
   await seedDefaultRoles();
 });
 afterAll(async () => {
-  await Promise.all([StaffUserModel.deleteMany({}), ActivityLogModel.deleteMany({}), RoleModel.deleteMany({}), PermissionModel.deleteMany({})]);
+  await Promise.all([StaffUserModel.deleteMany({}), ActivityLogModel.deleteMany({}), RoleModel.deleteMany({}), DefaultRoleSeedModel.deleteMany({}), PermissionModel.deleteMany({})]);
   await mongoose.disconnect();
 });
 

@@ -17,6 +17,8 @@ const NO_PERMISSION_EXEMPT: Record<string, string> = {
   "auth/token/logout/route.ts": "Public by necessity: logging out must work with an expired access token; it only revokes what it is handed.",
   "auth/accept-invite/route.ts": "Public by necessity: the invitee has no account yet; the invitation token is the credential. Rate limited by IP.",
   "auth/me/route.ts": "Requires a session (`auth: true`) but no permission: every staff member may read their own identity.",
+  "account/route.ts": "Requires a session (`auth: true`) but no permission: every staff member may read and rename their OWN account; the id comes from the session, never the request.",
+  "account/password/route.ts": "Requires a session (`auth: true`) but no permission: changing one's OWN password needs the current password, is rate limited per account, and the id comes from the session.",
 };
 
 /**

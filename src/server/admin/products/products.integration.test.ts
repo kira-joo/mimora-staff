@@ -75,7 +75,7 @@ describe("Admin Products", () => {
       expect(product.name.en).toBe("Product");
       expect(product.slug).toBe("test-product");
       expect(product.lifecycle).toBe("draft");
-      expect(product.order).toBe(0);
+      expect(product.order).toBe(1);
     });
 
     it("creates a product with all optional fields", async () => {
@@ -91,11 +91,10 @@ describe("Admin Products", () => {
         seoTitle: { ar: "عنوان", en: "Title" },
         seoDescription: { ar: "وصف", en: "Description" },
         lifecycle: "published",
-        order: 10,
       });
 
       expect(product.lifecycle).toBe("published");
-      expect(product.order).toBe(10);
+      expect(product.order).toBe(1);
       expect(product.optionAxes).toHaveLength(1);
     });
 
@@ -129,12 +128,11 @@ describe("Admin Products", () => {
 
       const updated = await updateProduct(created._id.toString(), {
         name: { ar: "منتج محدث", en: "Updated Product" },
-        order: 5,
       });
 
       expect(updated.name.ar).toBe("منتج محدث");
       expect(updated.name.en).toBe("Updated Product");
-      expect(updated.order).toBe(5);
+      expect(updated.order).toBe(created.order);
       expect(updated.slug).toBe("test-product");
     });
 
@@ -158,7 +156,7 @@ describe("Admin Products", () => {
 
     it("throws NotFoundError for non-existent product", async () => {
       const fakeId = new mongoose.Types.ObjectId().toString();
-      await expect(updateProduct(fakeId, { order: 10 })).rejects.toThrow(NotFoundError);
+      await expect(updateProduct(fakeId, { name: { ar: "س", en: "x" } })).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -178,7 +176,7 @@ describe("Admin Products", () => {
       failAfterWrite(productRepository, "update", 1); // the only write; it lands, then throws
 
       await expect(
-        updateProduct(created._id.toString(), { name: { ar: "جديد", en: "Renamed" }, order: 9, slug: "renamed" })
+        updateProduct(created._id.toString(), { name: { ar: "جديد", en: "Renamed" }, slug: "renamed" })
       ).rejects.toThrow("injected failure");
 
       expect(await ProductModel.findById(created._id).lean()).toEqual(before);
@@ -270,29 +268,48 @@ describe("Admin Products", () => {
       expect(result.data[0].slug).toBe("product-1");
     });
 
-    it("sorts products by order then createdAt", async () => {
-      const p1 = await createProduct({
-        name: { ar: "منتج 1", en: "Product 1" },
-        description: { ar: "وصف", en: "Description" },
-        slug: "product-1",
-        categoryId: categoryId.toString(),
-        order: 2,
-      });
+    it("a new product is appended: order is one past the highest, and the default list is the manual order", async () => {
+      const p1 = await createProduct({ name: { ar: "منتج 1", en: "Product 1" }, description: { ar: "وصف", en: "Description" }, slug: "product-1", categoryId: categoryId.toString() });
+      await ProductModel.updateOne({ _id: p1._id }, { $set: { order: 7 } });
+      const p2 = await createProduct({ name: { ar: "منتج 2", en: "Product 2" }, description: { ar: "وصف", en: "Description" }, slug: "product-2", categoryId: categoryId.toString() });
+      const p3 = await createProduct({ name: { ar: "منتج 3", en: "Product 3" }, description: { ar: "وصف", en: "Description" }, slug: "product-3", categoryId: categoryId.toString(), lifecycle: "archived" });
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect([p1.order, p2.order, p3.order]).toEqual([1, 8, 9]);
+      const manual = await listProducts({ limit: 10, page: 1 });
+      expect(manual.data.map((p) => p._id)).toEqual([p1, p2, p3].map((p) => p._id.toString()));
+    });
 
-      const p2 = await createProduct({
-        name: { ar: "منتج 2", en: "Product 2" },
-        description: { ar: "وصف", en: "Description" },
-        slug: "product-2",
-        categoryId: categoryId.toString(),
-        order: 1,
-      });
+    it("price sorts order by the lowest active price (unpriced last), and search + filters still apply", async () => {
+      const make = async (slug: string, price: string | undefined) => {
+        const created = await createProduct({ name: { ar: slug, en: `Ring ${slug}` }, description: { ar: "وصف", en: "Description" }, slug, categoryId: categoryId.toString() });
+        if (price) await ProductModel.updateOne({ _id: created._id }, { $set: { "listing.minActivePrice": Number(price), "listing.maxActivePrice": Number(price) } });
+        return created._id.toString();
+      };
+      const [dear, cheap, none] = [await make("dear", "50"), await make("cheap", "9.5"), await make("none", undefined)];
 
-      const result = await listProducts({ limit: 10, page: 1 });
+      const ids = async (query: Partial<Parameters<typeof listProducts>[0]>) => (await listProducts({ limit: 10, page: 1, ...query })).data.map((p) => p._id);
+      expect(await ids({ sort: "price_asc" })).toEqual([cheap, dear, none]);
+      expect(await ids({ sort: "price_desc" })).toEqual([dear, cheap, none]);
+      expect(await ids({ sort: "price_asc", search: "dear" })).toEqual([dear]);
+      expect(await ids({ sort: "price_asc", lifecycle: "published" })).toEqual([]);
+      const paged = await listProducts({ limit: 2, page: 2, sort: "price_asc" });
+      expect([paged.total, paged.totalPages, paged.data.map((p) => p._id)]).toEqual([3, 2, [none]]);
+    });
 
-      expect(result.data[0]._id).toBe(p2._id.toString());
-      expect(result.data[1]._id).toBe(p1._id.toString());
+    it("sort=manual ties newest first; newest/oldest sort by createdAt", async () => {
+      const make = async (slug: string) => {
+        const created = await createProduct({ name: { ar: slug, en: slug }, description: { ar: "وصف", en: "Description" }, slug, categoryId: categoryId.toString() });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return created._id.toString();
+      };
+      const [a, b, c] = [await make("a"), await make("b"), await make("c")];
+      await ProductModel.updateMany({}, { $set: { order: 0 } });
+
+      const ids = async (sort?: "manual" | "newest" | "oldest") => (await listProducts({ limit: 10, page: 1, sort })).data.map((p) => p._id);
+      expect(await ids()).toEqual([c, b, a]);
+      expect(await ids("manual")).toEqual([c, b, a]);
+      expect(await ids("newest")).toEqual([c, b, a]);
+      expect(await ids("oldest")).toEqual([a, b, c]);
     });
   });
 });
