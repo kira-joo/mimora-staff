@@ -56,7 +56,7 @@ export function ArrangeProductsView() {
   const ready = scope.kind === "all" || scope.id !== "";
 
   return (
-    <PageShell title="Arrange products" description="Set the order the storefront lists products in. Newly added products go to the end." backRoute={BACK}>
+    <PageShell title="Arrange products" description="Set the order the storefront lists products in. Newly added products go to the end." backRoute={BACK} surfaceClassName="overflow-visible">
       <div className="flex flex-col gap-4">
         <div className="grid max-w-2xl gap-3 sm:grid-cols-2">
           <CustomSelect<ScopeKind> label="Arrange" options={KIND_OPTIONS} value={scope.kind} onChange={(value) => void changeScope({ kind: value as ScopeKind, id: "" })} />

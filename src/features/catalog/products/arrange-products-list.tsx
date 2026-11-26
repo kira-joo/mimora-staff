@@ -91,7 +91,7 @@ export function ArrangeProductsList({ products, scope, scopeNote, onDirtyChange,
         })}
       </Reorder.Group>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-[var(--st-line)] bg-[var(--st-surface)] py-3">
         <CustomButton onClick={() => void save()} loading={saving} disabled={!dirty || saving}>
           Save order
         </CustomButton>
