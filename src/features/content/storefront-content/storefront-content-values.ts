@@ -34,13 +34,15 @@ export interface NavItemValue {
   label: LocalizedText;
 }
 
-export type SectionValue =
+/** Every section carries `shown`: switching it off keeps the section and its settings but hides it on the storefront. */
+export type SectionValue = (
   | { type: "campaignHero"; headline: LocalizedText; subline: LocalizedText; actionLabel: LocalizedText; target: string }
   | { type: "collectionStory"; collectionId: string; heading: LocalizedText; body: LocalizedText }
-  | { type: "productRail"; source: "collection" | "newest"; collectionId: string; heading: LocalizedText }
+  | { type: "productRail"; source: "collection" | "newest" | "category"; collectionId: string; categoryId: string; heading: LocalizedText }
   | { type: "categoryTiles"; categoryIds: string[]; heading: LocalizedText }
   | { type: "editorialBand"; collectionId: string; headline: LocalizedText }
-  | { type: "assuranceStrip" };
+  | { type: "assuranceStrip" }
+) & { shown: boolean };
 
 export interface StorefrontContentFormValues {
   announcements: AnnouncementValue[];
@@ -87,13 +89,17 @@ export const newAnnouncement = (): AnnouncementValue => ({ message: { ...EMPTY_T
 export const newNavItem = (): NavItemValue => ({ target: "", label: { ...EMPTY_TEXT } });
 
 export function newSection(type: HomeSectionType): SectionValue {
+  return { ...newSectionFields(type), shown: true } as SectionValue;
+}
+
+function newSectionFields(type: HomeSectionType) {
   switch (type) {
     case "campaignHero":
       return { type, headline: { ...EMPTY_TEXT }, subline: { ...EMPTY_TEXT }, actionLabel: { ...EMPTY_TEXT }, target: "" };
     case "collectionStory":
       return { type, collectionId: "", heading: { ...EMPTY_TEXT }, body: { ...EMPTY_TEXT } };
     case "productRail":
-      return { type, source: "newest", collectionId: "", heading: { ...EMPTY_TEXT } };
+      return { type, source: "newest" as const, collectionId: "", categoryId: "", heading: { ...EMPTY_TEXT } };
     case "categoryTiles":
       return { type, categoryIds: [], heading: { ...EMPTY_TEXT } };
     case "editorialBand":
@@ -106,13 +112,17 @@ export function newSection(type: HomeSectionType): SectionValue {
 // --- API -> form ------------------------------------------------------------------------------------------------
 
 function sectionToValue(section: HomeSection): SectionValue {
+  return { ...sectionFieldsToValue(section), shown: !section.hidden } as SectionValue;
+}
+
+function sectionFieldsToValue(section: HomeSection) {
   switch (section.type) {
     case "campaignHero":
       return { type: "campaignHero", headline: text(section.headline), subline: text(section.subline), actionLabel: text(section.actionLabel), target: encodeTarget(section.target) };
     case "collectionStory":
       return { type: "collectionStory", collectionId: section.collectionId, heading: text(section.heading), body: text(section.body) };
     case "productRail":
-      return { type: "productRail", source: section.source, collectionId: section.collectionId ?? "", heading: text(section.heading) };
+      return { type: "productRail" as const, source: section.source, collectionId: section.collectionId ?? "", categoryId: section.categoryId ?? "", heading: text(section.heading) };
     case "categoryTiles":
       return { type: "categoryTiles", categoryIds: [...section.categoryIds], heading: text(section.heading) };
     case "editorialBand":
@@ -154,13 +164,24 @@ function navItemToBody(value: NavItemValue): NavItem {
 }
 
 function sectionToBody(value: SectionValue): HomeSection {
+  const body = sectionFieldsToBody(value);
+  return value.shown ? body : { ...body, hidden: true };
+}
+
+function sectionFieldsToBody(value: SectionValue): HomeSection {
   switch (value.type) {
     case "campaignHero":
       return defined({ type: "campaignHero" as const, headline: clean(value.headline), subline: optionalText(value.subline), actionLabel: optionalText(value.actionLabel), target: decodeTarget(value.target) });
     case "collectionStory":
       return defined({ type: "collectionStory" as const, collectionId: value.collectionId, heading: optionalText(value.heading), body: optionalText(value.body) });
     case "productRail":
-      return defined({ type: "productRail" as const, source: value.source, collectionId: value.source === "collection" ? value.collectionId || undefined : undefined, heading: optionalText(value.heading) });
+      return defined({
+        type: "productRail" as const,
+        source: value.source,
+        collectionId: value.source === "collection" ? value.collectionId || undefined : undefined,
+        categoryId: value.source === "category" ? value.categoryId || undefined : undefined,
+        heading: optionalText(value.heading),
+      });
     case "categoryTiles":
       return defined({ type: "categoryTiles" as const, categoryIds: [...value.categoryIds], heading: optionalText(value.heading) });
     case "editorialBand":
@@ -205,6 +226,8 @@ const FIELD_LABELS: Record<string, string> = {
   actionLabel: "Button text",
   collectionId: "Collection",
   categoryIds: "Categories",
+  categoryId: "Category",
+  hidden: "Shown",
   heading: "Heading",
   body: "Body",
   source: "Source",

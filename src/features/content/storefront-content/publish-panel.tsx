@@ -44,7 +44,8 @@ function StatusLine({ content }: { content: StorefrontContentAdminView }) {
 
 function PreviewResult({ preview, draftSectionTypes }: { preview: StorefrontContentPreview; draftSectionTypes: StorefrontContentAdminView["draft"]["homeSections"] }) {
   const { view, problems } = preview;
-  const omitted = draftSectionTypes.length - view.homeSections.length;
+  // Hidden sections are left out on purpose; only shown ones that could not resolve count as "left out".
+  const omitted = draftSectionTypes.filter((section) => !section.hidden).length - view.homeSections.length;
   return (
     <div className="flex flex-col gap-4">
       {problems.length > 0 ? (

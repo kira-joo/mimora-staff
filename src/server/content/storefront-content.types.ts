@@ -56,11 +56,17 @@ export interface CollectionStorySection {
   body?: LocalizedString;
 }
 
+/** Where a product rail's products come from. `category` = that category and its descendants, in manual order. */
+export const PRODUCT_RAIL_SOURCES = ["collection", "newest", "category"] as const;
+export type ProductRailSource = (typeof PRODUCT_RAIL_SOURCES)[number];
+
 export interface ProductRailSection {
   type: "productRail";
-  source: "collection" | "newest";
+  source: ProductRailSource;
   /** Present exactly when `source` is `"collection"`. */
   collectionId?: mongoose.Types.ObjectId;
+  /** Present exactly when `source` is `"category"`. */
+  categoryId?: mongoose.Types.ObjectId;
   heading?: LocalizedString;
 }
 
@@ -82,7 +88,11 @@ export interface AssuranceStripSection {
   type: "assuranceStrip";
 }
 
-export type HomeSection = CampaignHeroSection | CollectionStorySection | ProductRailSection | CategoryTilesSection | EditorialBandSection | AssuranceStripSection;
+/**
+ * Every home section may be switched off without being deleted: `hidden: true` keeps it (and its configuration) in the
+ * content but the storefront never receives it. Absent means shown — every section saved before this existed.
+ */
+export type HomeSection = (CampaignHeroSection | CollectionStorySection | ProductRailSection | CategoryTilesSection | EditorialBandSection | AssuranceStripSection) & { hidden?: boolean };
 
 export interface StorefrontContentBody {
   /** Ordered; the storefront shows one at a time — the first enabled one in its window. */

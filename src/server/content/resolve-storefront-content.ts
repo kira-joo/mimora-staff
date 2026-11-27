@@ -22,7 +22,7 @@ export interface ResolvedEntity {
 export type ResolvedHomeSection =
   | { type: "campaignHero"; headline: LocalizedString; subline?: LocalizedString; action?: { label: LocalizedString; link: ResolvedLink }; image: ImageAsset | null }
   | { type: "collectionStory"; collection: ResolvedEntity; heading?: LocalizedString; body?: LocalizedString }
-  | { type: "productRail"; source: "collection" | "newest"; collection?: Pick<ResolvedEntity, "slug" | "name">; heading?: LocalizedString }
+  | { type: "productRail"; source: "collection" | "newest" | "category"; collection?: Pick<ResolvedEntity, "slug" | "name">; category?: Pick<ResolvedEntity, "slug" | "name">; heading?: LocalizedString }
   | { type: "categoryTiles"; categories: ResolvedEntity[]; heading?: LocalizedString }
   | { type: "editorialBand"; headline: LocalizedString; collection: ResolvedEntity }
   | { type: "assuranceStrip" };
@@ -87,7 +87,8 @@ export async function resolveStorefrontContent(body: StorefrontContentBody, now:
     headerNavigation: navigation(body.headerNavigation),
     footerNavigation: navigation(body.footerNavigation),
     legalLinks,
-    homeSections: body.homeSections.flatMap((section) => resolveSection(section, lookup, linkTo, heroImage) ?? []),
+    // A hidden section stays in the content (Staff keeps its configuration) but never reaches the storefront.
+    homeSections: body.homeSections.flatMap((section) => (section.hidden ? [] : (resolveSection(section, lookup, linkTo, heroImage) ?? []))),
     publishedAt,
   };
 }
@@ -105,6 +106,12 @@ function resolveSection(section: HomeSection, lookup: Lookup, linkTo: (target: L
     }
     case "productRail": {
       if (section.source === "newest") return { type: "productRail", source: "newest", ...optional("heading", section.heading) };
+      if (section.source === "category") {
+        // Resolved through the same published-category lookup the category tiles use; an unpublished or deleted
+        // category drops the rail rather than linking to a page that does not exist.
+        const category = section.categoryId ? lookup.category.get(section.categoryId.toString()) : undefined;
+        return category ? { type: "productRail", source: "category", category: { slug: category.slug, name: category.name }, ...optional("heading", section.heading) } : undefined;
+      }
       const found = collection(section.collectionId);
       return found ? { type: "productRail", source: "collection", collection: { slug: found.slug, name: found.name }, ...optional("heading", section.heading) } : undefined;
     }
@@ -163,6 +170,7 @@ export function collectReferences(body: StorefrontContentBody): Array<{ kind: Li
       references.push({ kind: "collection", id: section.collectionId, field: `homeSections.${index}.collectionId` });
     }
     if (section.type === "categoryTiles") section.categoryIds.forEach((id, tile) => references.push({ kind: "category", id, field: `homeSections.${index}.categoryIds.${tile}` }));
+    if (section.type === "productRail" && section.categoryId) references.push({ kind: "category", id: section.categoryId, field: `homeSections.${index}.categoryId` });
   });
   return references;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { CustomButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
-import { FormLocalizedInput, FormLocalizedTextarea, FormRadioGroup, FormSelect } from "@kira-joo/frontend-toolkit-tailwind/forms";
+import { FormLocalizedInput, FormLocalizedTextarea, FormRadioGroup, FormSelect, FormSwitch } from "@kira-joo/frontend-toolkit-tailwind/forms";
 import { Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import { STOREFRONT_CONTENT_LIMITS, type HomeSectionType } from "src/api/storefront-content.endpoints";
@@ -18,7 +18,7 @@ type Form = UseFormReturn<StorefrontContentFormValues>;
 const LIBRARY: Array<{ type: HomeSectionType; description: string }> = [
   { type: "campaignHero", description: "The big opening banner: headline, subline and one button. Must be first, once." },
   { type: "collectionStory", description: "A collection's image beside a short story about it." },
-  { type: "productRail", description: "A row of products, from a collection or the newest arrivals." },
+  { type: "productRail", description: "A scrolling row of up to 10 products, from a category, a collection or the newest arrivals." },
   { type: "categoryTiles", description: "Tiles that open up to 8 chosen categories." },
   { type: "editorialBand", description: "A full-width band with a headline, linking to a collection." },
   { type: "assuranceStrip", description: "Delivery, returns and payment reassurance. Once only." },
@@ -33,7 +33,7 @@ const preview = (value: { ar: string; en: string } | undefined) => value?.en.tri
 
 function sectionTitle(section: SectionValue, index: number): string {
   const text = "headline" in section ? preview(section.headline) : "heading" in section ? preview(section.heading) : "";
-  return `${index + 1}. ${SECTION_LABELS[section.type]}${text ? ` · ${text}` : ""}`;
+  return `${index + 1}. ${SECTION_LABELS[section.type]}${text ? ` · ${text}` : ""}${section.shown ? "" : " · Hidden"}`;
 }
 
 function SectionFields({ section, index, form, options, disabled }: { section: SectionValue; index: number; form: Form; options: LinkOptions; disabled: boolean }) {
@@ -71,8 +71,21 @@ function SectionFields({ section, index, form, options, disabled }: { section: S
             options={[
               { value: "newest", label: "Newest arrivals" },
               { value: "collection", label: "From a collection" },
+              { value: "category", label: "From a category" },
             ]}
           />
+          {section.source === "category" ? (
+            <FormSelect
+              control={form.control}
+              name={path("categoryId")}
+              label="Category"
+              options={options.categories}
+              placeholder="Choose a category"
+              description="Its products and its subcategories' products, in your arranged order. Hidden on the storefront while the category has no published products."
+              disabled={disabled}
+              rules={{ validate: (value: unknown) => (sourceOf(form, index) !== "category" || value ? true : "Choose the category this rail shows.") }}
+            />
+          ) : null}
           {section.source === "collection" ? (
             <FormSelect
               control={form.control}
@@ -161,6 +174,13 @@ export function HomeSectionsEditor({ value: sections, onChange, form, options, d
             onRemove={() => onChange(form.getValues("homeSections").filter((_, i) => i !== index))}
           >
             <RowError control={form.control} name={`homeSections.${index}.type` as never} />
+            <FormSwitch
+              control={form.control}
+              name={`homeSections.${index}.shown` as never}
+              label="Shown on the storefront"
+              description="Switch off to hide this section without losing its settings."
+              disabled={disabled}
+            />
             <SectionFields section={section} index={index} form={form} options={options} disabled={disabled} />
           </ListRow>
         ))}

@@ -70,6 +70,11 @@ export class CampaignHeroSectionDto {
   @IsIn(["campaignHero"])
   type!: "campaignHero";
 
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
+
   @IsDefined()
   @ValidateNested()
   @Type(() => LocalizedStringDto)
@@ -95,6 +100,11 @@ export class CollectionStorySectionDto {
   @IsIn(["collectionStory"])
   type!: "collectionStory";
 
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
+
   @IsMongoId()
   collectionId!: string;
 
@@ -113,12 +123,22 @@ export class ProductRailSectionDto {
   @IsIn(["productRail"])
   type!: "productRail";
 
-  @IsIn(["collection", "newest"])
-  source!: "collection" | "newest";
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
+
+  @IsIn(["collection", "newest", "category"])
+  source!: "collection" | "newest" | "category";
 
   @IsOptional()
   @IsMongoId()
   collectionId?: string;
+
+  /** The category whose products the rail shows (with its descendants), exactly when `source` is `"category"`. */
+  @IsOptional()
+  @IsMongoId()
+  categoryId?: string;
 
   @IsOptional()
   @ValidateNested()
@@ -129,6 +149,11 @@ export class ProductRailSectionDto {
 export class CategoryTilesSectionDto {
   @IsIn(["categoryTiles"])
   type!: "categoryTiles";
+
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
 
   @IsArray()
   @ArrayMinSize(1)
@@ -146,6 +171,11 @@ export class EditorialBandSectionDto {
   @IsIn(["editorialBand"])
   type!: "editorialBand";
 
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
+
   @IsMongoId()
   collectionId!: string;
 
@@ -158,6 +188,11 @@ export class EditorialBandSectionDto {
 export class AssuranceStripSectionDto {
   @IsIn(["assuranceStrip"])
   type!: "assuranceStrip";
+
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  @IsOptional()
+  @IsBoolean()
+  hidden?: boolean;
 }
 
 export type HomeSectionInput =

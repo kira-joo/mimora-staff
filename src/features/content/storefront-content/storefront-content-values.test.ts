@@ -39,7 +39,7 @@ describe("create defaults", () => {
     expect(newAnnouncement()).toEqual({ message: { ar: "", en: "" }, target: "", startsAt: "", endsAt: "", enabled: true });
     expect(newNavItem()).toEqual({ target: "", label: { ar: "", en: "" } });
     expect(newSection("productRail")).toMatchObject({ type: "productRail", source: "newest", collectionId: "" });
-    expect(newSection("assuranceStrip")).toEqual({ type: "assuranceStrip" });
+    expect(newSection("assuranceStrip")).toEqual({ type: "assuranceStrip", shown: true });
   });
 
   it("new rows do not share their localized objects", () => {
@@ -119,8 +119,26 @@ describe("toSaveBody", () => {
   });
 
   it("drops a rail's collection when the source is newest, even if one is still in the form", () => {
-    const body = toSaveBody({ announcements: [], headerNavigation: [], footerNavigation: [], homeSections: [{ type: "productRail", source: "newest", collectionId: C, heading: { ar: "", en: "" } }] });
+    const body = toSaveBody({ announcements: [], headerNavigation: [], footerNavigation: [], homeSections: [{ type: "productRail", source: "newest", collectionId: C, categoryId: C, heading: { ar: "", en: "" }, shown: true }] });
     expect(body.homeSections[0]).toEqual({ type: "productRail", source: "newest" });
+  });
+
+  it("saves a category rail with only its category, and a hidden section as hidden — keeping its settings", () => {
+    const body = toSaveBody({
+      announcements: [],
+      headerNavigation: [],
+      footerNavigation: [],
+      homeSections: [
+        { type: "productRail", source: "category", collectionId: C, categoryId: C, heading: { ar: "", en: "" }, shown: true },
+        { type: "productRail", source: "collection", collectionId: C, categoryId: "", heading: { ar: "", en: "" }, shown: false },
+      ],
+    });
+    expect(body.homeSections[0]).toEqual({ type: "productRail", source: "category", categoryId: C });
+    expect(body.homeSections[1]).toEqual({ type: "productRail", source: "collection", collectionId: C, hidden: true });
+  });
+
+  it("new sections start shown", () => {
+    expect(newSection("productRail")).toMatchObject({ shown: true, source: "newest", categoryId: "" });
   });
 
   it("normalises dates to ISO instants", () => {

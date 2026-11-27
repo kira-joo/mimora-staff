@@ -137,7 +137,14 @@ function staleDraft() {
 
 /** Everything that would show a customer a gap if this draft went live. */
 async function publishProblems(draft: StorefrontContentBody): Promise<ValidationFieldError[]> {
-  const references = collectReferences(draft);
+  // A hidden section never reaches customers, so it cannot show them a gap: switching a section off is how a merchant
+  // takes one out of the way (its collection was unpublished, say) without losing its settings. Its shape is still
+  // checked on every save, and its references still hold their lock.
+  const hiddenSection = (path: string) => {
+    const [list, index] = path.split(".");
+    return list === "homeSections" && draft.homeSections[Number(index)]?.hidden === true;
+  };
+  const references = collectReferences(draft).filter((reference) => !hiddenSection(reference.field));
   const live = await publishedIds(references.map((reference) => ({ kind: reference.kind, id: reference.id })));
   const broken = references
     .filter((reference) => !live[reference.kind].has(reference.id.toString()))
@@ -148,6 +155,7 @@ async function publishProblems(draft: StorefrontContentBody): Promise<Validation
     if (list === "announcements") return field === "message";
     if (list !== "homeSections") return false;
     const section = draft.homeSections[Number(index)];
+    if (section?.hidden) return false;
     if (field === "headline") return section?.type === "campaignHero" || section?.type === "editorialBand";
     return field === "actionLabel" && section?.type === "campaignHero" && !!section.target;
   };
@@ -185,7 +193,9 @@ export function assertDraftShape(draft: StorefrontContentBody): void {
     if (section.type === "assuranceStrip" && draft.homeSections.findIndex((other) => other.type === "assuranceStrip") !== index) fail(`homeSections.${index}.type`, "The assurance strip can only appear once.");
     if (section.type === "campaignHero" && !!section.actionLabel !== !!section.target) fail(`homeSections.${index}.target`, "A hero action needs both a label and a destination.");
     if (section.type === "productRail" && section.source === "collection" && !section.collectionId) fail(`homeSections.${index}.collectionId`, "Choose the collection this rail shows.");
-    if (section.type === "productRail" && section.source === "newest" && section.collectionId) fail(`homeSections.${index}.collectionId`, "A newest-products rail does not take a collection.");
+    if (section.type === "productRail" && section.source !== "collection" && section.collectionId) fail(`homeSections.${index}.collectionId`, "Only a collection rail takes a collection.");
+    if (section.type === "productRail" && section.source === "category" && !section.categoryId) fail(`homeSections.${index}.categoryId`, "Choose the category this rail shows.");
+    if (section.type === "productRail" && section.source !== "category" && section.categoryId) fail(`homeSections.${index}.categoryId`, "Only a category rail takes a category.");
   });
 
   if (errors.length > 0) throw new ValidationFailedError(errors);
@@ -205,19 +215,29 @@ function toBody(input: SaveStorefrontContentDraftDto): StorefrontContentBody {
     headerNavigation: input.headerNavigation.map((item) => compact({ target: target(item.target)!, label: localized(item.label) })),
     footerNavigation: input.footerNavigation.map((item) => compact({ target: target(item.target)!, label: localized(item.label) })),
     homeSections: input.homeSections.map((section): HomeSection => {
+      const built = buildSection();
+      return section.hidden ? { ...built, hidden: true } : built;
+      function buildSection(): HomeSection {
       switch (section.type) {
         case "campaignHero":
           return compact({ type: section.type, headline: localized(section.headline)!, subline: localized(section.subline), actionLabel: localized(section.actionLabel), target: target(section.target) });
         case "collectionStory":
           return compact({ type: section.type, collectionId: id(section.collectionId), heading: localized(section.heading), body: localized(section.body) });
         case "productRail":
-          return compact({ type: section.type, source: section.source, collectionId: section.collectionId ? id(section.collectionId) : undefined, heading: localized(section.heading) });
+          return compact({
+            type: section.type,
+            source: section.source,
+            collectionId: section.collectionId ? id(section.collectionId) : undefined,
+            categoryId: section.categoryId ? id(section.categoryId) : undefined,
+            heading: localized(section.heading),
+          });
         case "categoryTiles":
           return compact({ type: section.type, categoryIds: section.categoryIds.map(id), heading: localized(section.heading) });
         case "editorialBand":
           return { type: section.type, collectionId: id(section.collectionId), headline: localized(section.headline)! };
         case "assuranceStrip":
           return { type: section.type };
+      }
       }
     }),
   };

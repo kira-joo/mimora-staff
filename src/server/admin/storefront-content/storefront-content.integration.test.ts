@@ -171,6 +171,7 @@ describe("the draft's structure is enforced on every save", () => {
     ["a second assurance strip", [{ type: "assuranceStrip" }, { type: "assuranceStrip" }], ["homeSections.1.type"]],
     ["a hero action without a destination", [{ type: "campaignHero", headline: L("ع", "H"), actionLabel: L("تسوق", "Shop") }], ["homeSections.0.target"]],
     ["a collection rail without a collection", [{ type: "productRail", source: "collection" }], ["homeSections.0.collectionId"]],
+    ["a category rail without a category", [{ type: "productRail", source: "category" }], ["homeSections.0.categoryId"]],
   ] as const)("refuses %s", async (_, homeSections, fields) => {
     expect(await fieldsOf(saveStorefrontContentDraft({ ...empty(), homeSections: homeSections as never }))).toEqual(fields);
   });
@@ -246,5 +247,44 @@ describe("what customers see", () => {
 
     const [hero] = (await getStorefrontContent(NOW)).homeSections;
     expect(hero).toMatchObject({ type: "campaignHero", image: { secureUrl: "https://example.com/hero.jpg" } });
+  });
+});
+
+describe("category rails and hidden sections", () => {
+  it("a category rail resolves to its published category's slug and name; a hidden section keeps its settings but never reaches the storefront", async () => {
+    await saveAndPublish({
+      ...empty(),
+      homeSections: [
+        { type: "productRail", source: "category", categoryId, heading: L("بيجامات", "Pajamas") },
+        { type: "productRail", source: "collection", collectionId, hidden: true },
+        { type: "assuranceStrip", hidden: false },
+      ],
+    });
+
+    expect((await getStorefrontContent(NOW)).homeSections).toEqual([
+      { type: "productRail", source: "category", category: { slug: "shirts", name: L("قمصان", "Shirts") }, heading: L("بيجامات", "Pajamas") },
+      { type: "assuranceStrip" },
+    ]);
+    const stored = (await getStorefrontContentAdmin()).published!.homeSections;
+    expect(JSON.parse(JSON.stringify(stored[1]))).toEqual({ type: "productRail", source: "collection", collectionId, hidden: true });
+    expect(stored[2]).not.toHaveProperty("hidden");
+  });
+
+  it("drops a category rail whose category is unpublished, rather than linking to a missing page", async () => {
+    await saveAndPublish({ ...empty(), homeSections: [{ type: "productRail", source: "category", categoryId }] });
+    await CategoryModel.updateOne({ _id: categoryId }, { $set: { published: false } });
+    expect((await getStorefrontContent(NOW)).homeSections).toEqual([]);
+  });
+
+  it("a hidden section never blocks publishing, even when what it points at is unpublished", async () => {
+    await CollectionModel.updateOne({ _id: collectionId }, { $set: { published: false } });
+    await expect(saveAndPublish({ ...empty(), homeSections: [{ type: "productRail", source: "collection", collectionId, hidden: true }] })).resolves.toBeDefined();
+    expect((await getStorefrontContent(NOW)).homeSections).toEqual([]);
+    // …while the same section shown is still refused.
+    await expect(saveAndPublish({ ...empty(), homeSections: [{ type: "productRail", source: "collection", collectionId }] })).rejects.toThrow();
+  });
+
+  it("refuses a category on a non-category rail", async () => {
+    expect(await fieldsOf(saveStorefrontContentDraft({ ...empty(), homeSections: [{ type: "productRail", source: "newest", categoryId } as never] }))).toEqual(["homeSections.0.categoryId"]);
   });
 });

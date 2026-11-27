@@ -30,13 +30,17 @@ export interface NavItem {
 
 export type HomeSectionType = "campaignHero" | "collectionStory" | "productRail" | "categoryTiles" | "editorialBand" | "assuranceStrip";
 
-export type HomeSection =
+export type HomeSection = (
   | { type: "campaignHero"; headline: LocalizedText; subline?: LocalizedText; actionLabel?: LocalizedText; target?: LinkTarget }
   | { type: "collectionStory"; collectionId: string; heading?: LocalizedText; body?: LocalizedText }
-  | { type: "productRail"; source: "collection" | "newest"; collectionId?: string; heading?: LocalizedText }
+  | { type: "productRail"; source: "collection" | "newest" | "category"; collectionId?: string; categoryId?: string; heading?: LocalizedText }
   | { type: "categoryTiles"; categoryIds: string[]; heading?: LocalizedText }
   | { type: "editorialBand"; collectionId: string; headline: LocalizedText }
-  | { type: "assuranceStrip" };
+  | { type: "assuranceStrip" }
+) & {
+  /** Kept in the content but not shown on the storefront. Absent = shown. */
+  hidden?: boolean;
+};
 
 /** The request body of the draft save, and the shape of `draft`/`published` on read. */
 export interface StorefrontContentBody {

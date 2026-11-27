@@ -1,6 +1,6 @@
 import { MongoField, MongoSchema, createMongoModel } from "@kira-joo/backend-toolkit-mongoose";
 import mongoose from "mongoose";
-import { HOME_SECTION_TYPES, LINK_KINDS, type StorefrontContentBody } from "./storefront-content.types";
+import { HOME_SECTION_TYPES, PRODUCT_RAIL_SOURCES, LINK_KINDS, type StorefrontContentBody } from "./storefront-content.types";
 
 /*
  * Hand-written sub-schemas: the decorators cannot express a nested array of
@@ -38,8 +38,10 @@ const homeSection = new mongoose.Schema(
     target: { type: linkTarget, required: false },
     heading: { type: localized, required: false },
     body: { type: localized, required: false },
-    source: { type: String, enum: ["collection", "newest"], required: false },
+    source: { type: String, enum: PRODUCT_RAIL_SOURCES, required: false },
     collectionId: { type: mongoose.Schema.Types.ObjectId, required: false },
+    categoryId: { type: mongoose.Schema.Types.ObjectId, required: false },
+    hidden: { type: Boolean, required: false },
     categoryIds: { type: [mongoose.Schema.Types.ObjectId], default: undefined },
   },
   { _id: false }
