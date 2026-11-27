@@ -3,7 +3,7 @@
 import { CustomButton } from "@kira-joo/frontend-toolkit-tailwind/primitives";
 import { FormLocalizedInput, FormLocalizedTextarea, FormRadioGroup, FormSelect, FormSwitch } from "@kira-joo/frontend-toolkit-tailwind/forms";
 import { Plus } from "lucide-react";
-import type { UseFormReturn } from "react-hook-form";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 import { STOREFRONT_CONTENT_LIMITS, type HomeSectionType } from "src/api/storefront-content.endpoints";
 import { moveItem } from "src/components/reorder-dialog";
 import { NONE } from "src/features/catalog/use-catalog-options";
@@ -38,6 +38,11 @@ function sectionTitle(section: SectionValue, index: number): string {
 
 function SectionFields({ section, index, form, options, disabled }: { section: SectionValue; index: number; form: Form; options: LinkOptions; disabled: boolean }) {
   const path = (key: string) => `homeSections.${index}.${key}` as never;
+  // The rail's source is read LIVE: the list above re-renders only when sections are added, moved or removed, not when a
+  // radio inside one changes, so the section prop still holds the source it had when added — and a new rail switched to
+  // "From a category" (or "From a collection") never showed its dropdown.
+  const live = useWatch({ control: form.control, name: `homeSections.${index}` as const });
+  const liveSource = live?.type === "productRail" ? live.source : section.type === "productRail" ? section.source : undefined;
   switch (section.type) {
     case "campaignHero":
       return (
@@ -74,7 +79,7 @@ function SectionFields({ section, index, form, options, disabled }: { section: S
               { value: "category", label: "From a category" },
             ]}
           />
-          {section.source === "category" ? (
+          {liveSource === "category" ? (
             <FormSelect
               control={form.control}
               name={path("categoryId")}
@@ -86,7 +91,7 @@ function SectionFields({ section, index, form, options, disabled }: { section: S
               rules={{ validate: (value: unknown) => (sourceOf(form, index) !== "category" || value ? true : "Choose the category this rail shows.") }}
             />
           ) : null}
-          {section.source === "collection" ? (
+          {liveSource === "collection" ? (
             <FormSelect
               control={form.control}
               name={path("collectionId")}
