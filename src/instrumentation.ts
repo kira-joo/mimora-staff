@@ -68,35 +68,54 @@ export async function register(): Promise<void> {
     log("[phone] STORE_PHONE_COUNTRY_CODE is not set — national phone numbers are kept as typed (no +<cc> conversion).");
   }
 
-  const { connectToDatabase } = await import("./server/core/db/connect");
-  await connectToDatabase();
+  /*
+   * Everything below needs the database, and is wrapped so that a failure here can NEVER poison this server instance.
+   *
+   * Next memoises `register()`'s promise for the life of the process (`registerInstrumentationPromise` in
+   * next/dist/server/lib/router-utils/instrumentation-globals.external.js) — a rejection is never retried, and every
+   * later request rethrows it as "An error occurred while loading instrumentation hook". So one transient database
+   * failure at boot (it happened on 2026-11-27, 15:51–16:28 UTC: TLS-refused connections during the index check) left
+   * instances answering 500 to every request long after the database was healthy again, until Vercel recycled them.
+   *
+   * Nothing is weakened by not rethrowing: every request already runs `connectToDatabase()` itself (the toolkit's
+   * `database.connect`, `toolkit.config.ts`), which re-checks the store identity and the indexes and refuses the request
+   * while they fail — and, because it clears its memo on failure, recovers by itself once the database is back. The
+   * permission sync and role seed below are idempotent and run again on the next cold start.
+   */
+  try {
+    const { connectToDatabase } = await import("./server/core/db/connect");
+    await connectToDatabase();
 
-  // The phone country must be the store's own: cross-check it against the merchant's contact number.
-  const { phoneCountryMismatch } = await import("./server/core/config/store-phone-country");
-  const { StoreProfileModel } = await import("./server/content/store-profile.schema");
-  const profile = await StoreProfileModel.findOne({}, { "contact.phone": 1 }).lean();
-  const phoneProblem = phoneCountryMismatch(storePhoneCountryCode(), profile?.contact?.phone);
-  if (phoneProblem) (process.env.NODE_ENV === "production" ? console.error : console.warn)(`[phone] ${phoneProblem}`);
+    // The phone country must be the store's own: cross-check it against the merchant's contact number.
+    const { phoneCountryMismatch } = await import("./server/core/config/store-phone-country");
+    const { StoreProfileModel } = await import("./server/content/store-profile.schema");
+    const profile = await StoreProfileModel.findOne({}, { "contact.phone": 1 }).lean();
+    const phoneProblem = phoneCountryMismatch(storePhoneCountryCode(), profile?.contact?.phone);
+    if (phoneProblem) (process.env.NODE_ENV === "production" ? console.error : console.warn)(`[phone] ${phoneProblem}`);
 
-  // One read, and a write only for a missing or drifted permission (see reconcile-permissions.ts) — not one per permission.
-  const { reconcilePermissions } = await import("./server/core/authorization/reconcile-permissions");
-  const { PermissionModel } = await import("./server/core/authorization/role.model");
-  const { ALL_PERMISSION_DEFINITIONS } = await import("./common/authorization/authorization-registry");
+    // One read, and a write only for a missing or drifted permission (see reconcile-permissions.ts) — not one per permission.
+    const { reconcilePermissions } = await import("./server/core/authorization/reconcile-permissions");
+    const { PermissionModel } = await import("./server/core/authorization/role.model");
+    const { ALL_PERMISSION_DEFINITIONS } = await import("./common/authorization/authorization-registry");
 
-  const result = await reconcilePermissions({
-    model: PermissionModel,
-    definitions: ALL_PERMISSION_DEFINITIONS,
-  });
+    const result = await reconcilePermissions({
+      model: PermissionModel,
+      definitions: ALL_PERMISSION_DEFINITIONS,
+    });
 
-  console.log(`[permissions] synced: ${result.created.length} created, ${result.updated.length} updated, ${result.skipped.length} already existed`);
+    console.log(`[permissions] synced: ${result.created.length} created, ${result.updated.length} updated, ${result.skipped.length} already existed`);
 
-  const { seedDefaultRoles, migrateLegacyStaffManage } = await import("./server/admin/staff/seed-default-roles");
-  const roleResult = await seedDefaultRoles();
+    const { seedDefaultRoles, migrateLegacyStaffManage } = await import("./server/admin/staff/seed-default-roles");
+    const roleResult = await seedDefaultRoles();
 
-  console.log(`[roles] seeded: ${roleResult.created.length} created, ${roleResult.skipped.length} already existed`);
-  for (const [role, keys] of Object.entries(roleResult.permissionsAdded)) console.log(`[roles] ${role}: added missing default permissions (${keys.join(", ")})`);
+    console.log(`[roles] seeded: ${roleResult.created.length} created, ${roleResult.skipped.length} already existed`);
+    for (const [role, keys] of Object.entries(roleResult.permissionsAdded)) console.log(`[roles] ${role}: added missing default permissions (${keys.join(", ")})`);
 
-  // Staff routes are guarded by granular StaffUser.* permissions; a role that held the retired StaffUser.manage keeps its access.
-  const legacy = await migrateLegacyStaffManage();
-  if (legacy.rolesUpdated > 0) console.log(`[roles] migrated ${legacy.rolesUpdated} role(s) off the retired StaffUser.manage onto StaffUser.read/create/update`);
+    // Staff routes are guarded by granular StaffUser.* permissions; a role that held the retired StaffUser.manage keeps its access.
+    const legacy = await migrateLegacyStaffManage();
+    if (legacy.rolesUpdated > 0) console.log(`[roles] migrated ${legacy.rolesUpdated} role(s) off the retired StaffUser.manage onto StaffUser.read/create/update`);
+  } catch (error) {
+    // Loud, once, at boot — the request path will refuse (and retry) on its own until the database is reachable.
+    console.error("[boot] database startup steps failed; requests will retry the connection and refuse until it succeeds:", error);
+  }
 }
